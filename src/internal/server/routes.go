@@ -13,7 +13,6 @@ import (
 	"github.com/go-chi/cors"
 	"github.com/go-chi/render"
 
-	"src/internal/config"
 	usersHTTP "src/internal/modules/users/interfaces/http"
 )
 
