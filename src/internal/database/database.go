@@ -34,17 +34,28 @@ var (
 )
 
 func New() Service {
-	// Reuse Connection
 	if dbInstance != nil {
 		return dbInstance
 	}
 
-	database = os.Getenv("DB_DATABASE")
-	password = os.Getenv("DB_PASSWORD")
-	username = os.Getenv("DB_USERNAME")
-	port = os.Getenv("DB_PORT")
-	host = os.Getenv("DB_HOST")
-	schema = os.Getenv("DB_SCHEMA")
+	if database == "" {
+		database = os.Getenv("DB_DATABASE")
+	}
+	if password == "" {
+		password = os.Getenv("DB_PASSWORD")
+	}
+	if username == "" {
+		username = os.Getenv("DB_USERNAME")
+	}
+	if port == "" {
+		port = os.Getenv("DB_PORT")
+	}
+	if host == "" {
+		host = os.Getenv("DB_HOST")
+	}
+	if schema == "" {
+		schema = os.Getenv("DB_SCHEMA")
+	}
 
 	connStr := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable&search_path=%s", username, password, host, port, database, schema)
 	db, err := sql.Open("pgx", connStr)
