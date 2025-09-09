@@ -16,7 +16,7 @@ import (
 	usersHTTP "src/internal/modules/users/interfaces/http"
 )
 
-func (s *Server) RegisterRoutes(cfg *config.Config) http.Handler {
+func (s *Server) RegisterRoutes() http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	r.Use(render.SetContentType(render.ContentTypeJSON))
