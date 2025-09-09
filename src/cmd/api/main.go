@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"src/internal/config"
 	"src/internal/database"
 	"src/internal/server"
 	_ "src/migrations"
@@ -40,6 +41,9 @@ func gracefulShutdown(apiServer *http.Server, done chan bool) {
 }
 
 func main() {
+	// Load configuration once at startup
+	config.Load()
+
 	// Initialize DB and run migrations before starting HTTP server
 	_ = database.New()
 	if err := goose.SetDialect("postgres"); err != nil {

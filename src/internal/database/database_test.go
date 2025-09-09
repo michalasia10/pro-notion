@@ -10,13 +10,15 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 	"github.com/testcontainers/testcontainers-go/wait"
+
+	"src/internal/config"
 )
 
 func mustStartPostgresContainer() (func(context.Context, ...testcontainers.TerminateOption) error, error) {
 	var (
-		dbName = "database"
-		dbPwd  = "password"
-		dbUser = "user"
+		dbName = "test_database"
+		dbPwd  = "test_password"
+		dbUser = "test_user"
 	)
 
 	dbContainer, err := postgres.Run(
@@ -34,10 +36,6 @@ func mustStartPostgresContainer() (func(context.Context, ...testcontainers.Termi
 		return nil, err
 	}
 
-	database = dbName
-	password = dbPwd
-	username = dbUser
-
 	dbHost, err := dbContainer.Host(context.Background())
 	if err != nil {
 		return dbContainer.Terminate, err
@@ -48,8 +46,22 @@ func mustStartPostgresContainer() (func(context.Context, ...testcontainers.Termi
 		return dbContainer.Terminate, err
 	}
 
-	host = dbHost
-	port = dbPort.Port()
+	testConfig := &config.Config{
+		Port: 8080, // Default for tests
+	}
+	testConfig.Database.Host = dbHost
+	testConfig.Database.Port = dbPort.Port()
+	testConfig.Database.Username = dbUser
+	testConfig.Database.Password = dbPwd
+	testConfig.Database.Database = dbName
+	testConfig.Database.Schema = "public"
+
+	testConfig.Redis.Host = "localhost"
+	testConfig.Redis.Port = "6379"
+	testConfig.Redis.Password = ""
+
+	// Set test config
+	config.SetForTests(testConfig)
 
 	return dbContainer.Terminate, err
 }
@@ -69,6 +81,11 @@ var _ = AfterSuite(func() {
 })
 
 var _ = Describe("Database", func() {
+	BeforeEach(func() {
+		// Reset singleton for each test
+		dbInstance = nil
+	})
+
 	It("New returns non-nil", func() {
 		srv := New()
 		Expect(srv).ToNot(BeNil())

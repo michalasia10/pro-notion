@@ -5,12 +5,12 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
-	"os"
 	"strconv"
 	"time"
 
+	"src/internal/config"
+
 	_ "github.com/jackc/pgx/v5/stdlib"
-	_ "github.com/joho/godotenv/autoload"
 )
 
 // Service represents a service that interacts with a database.
@@ -25,12 +25,6 @@ type service struct {
 
 var (
 	dbInstance *service
-	database   string
-	password   string
-	username   string
-	port       string
-	host       string
-	schema     string
 )
 
 func New() Service {
@@ -38,29 +32,12 @@ func New() Service {
 		return dbInstance
 	}
 
-	if database == "" {
-		database = os.Getenv("DB_DATABASE")
-	}
-	if password == "" {
-		password = os.Getenv("DB_PASSWORD")
-	}
-	if username == "" {
-		username = os.Getenv("DB_USERNAME")
-	}
-	if port == "" {
-		port = os.Getenv("DB_PORT")
-	}
-	if host == "" {
-		host = os.Getenv("DB_HOST")
-	}
-	if schema == "" {
-		schema = os.Getenv("DB_SCHEMA")
-	}
+	cfg := config.Get()
+	connStr := cfg.DatabaseURL()
 
-	connStr := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable&search_path=%s", username, password, host, port, database, schema)
 	db, err := sql.Open("pgx", connStr)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("failed to open database connection: %v", err)
 	}
 
 	dbInstance = &service{

@@ -1,17 +1,23 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 	"github.com/go-chi/render"
+
+	"src/internal/config"
+	usersHTTP "src/internal/modules/users/interfaces/http"
 )
 
-func (s *Server) RegisterRoutes() http.Handler {
+func (s *Server) RegisterRoutes(cfg *config.Config) http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	r.Use(render.SetContentType(render.ContentTypeJSON))
@@ -30,7 +36,8 @@ func (s *Server) RegisterRoutes() http.Handler {
 
 	// API v1 feature routers
 	r.Route("/api/v1", func(r chi.Router) {
-		// API v1 feature routers
+		r.Mount("/users", usersHTTP.NewRouter())
+		r.Mount("/auth", usersHTTP.NewAuthRouter())
 	})
 
 	return r
@@ -49,6 +56,75 @@ func (s *Server) HelloWorldHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) healthHandler(w http.ResponseWriter, r *http.Request) {
-	jsonResp, _ := json.Marshal(s.db.Health())
+	health := s.getSystemHealth()
+	status := http.StatusOK
+
+	// If any component is unhealthy, return 503
+	for _, component := range health {
+		if comp, ok := component.(map[string]string); ok {
+			if comp["status"] == "down" {
+				status = http.StatusServiceUnavailable
+				break
+			}
+		}
+	}
+
+	w.WriteHeader(status)
+	jsonResp, _ := json.Marshal(health)
 	_, _ = w.Write(jsonResp)
+}
+
+func (s *Server) getSystemHealth() map[string]interface{} {
+	health := make(map[string]interface{})
+
+	// Database health
+	dbHealth := s.db.Health()
+	health["database"] = dbHealth
+
+	// Redis health
+	redisHealth := s.checkRedisHealth()
+	health["redis"] = redisHealth
+
+	// Overall system status
+	systemHealthy := true
+	if dbHealth["status"] == "down" || redisHealth["status"] == "down" {
+		systemHealthy = false
+	}
+
+	if systemHealthy {
+		health["status"] = "healthy"
+		health["message"] = "All systems operational"
+	} else {
+		health["status"] = "unhealthy"
+		health["message"] = "One or more systems are down"
+	}
+
+	health["timestamp"] = time.Now().UTC().Format(time.RFC3339)
+	health["version"] = "1.0.0" // You can make this dynamic
+
+	return health
+}
+
+func (s *Server) checkRedisHealth() map[string]string {
+	health := make(map[string]string)
+
+	if s.redisClient == nil {
+		health["status"] = "down"
+		health["error"] = "Redis client not initialized"
+		return health
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+
+	_, err := s.redisClient.Ping(ctx).Result()
+	if err != nil {
+		health["status"] = "down"
+		health["error"] = fmt.Sprintf("Redis ping failed: %v", err)
+		return health
+	}
+
+	health["status"] = "up"
+	health["message"] = "Redis is healthy"
+	return health
 }
