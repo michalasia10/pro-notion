@@ -1,0 +1,59 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    working_dir: /app
+    command: sh -c "air -c .air.toml"
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    environment:
+      - GOCACHE=/go-build-cache
+      - GOMODCACHE=/go/pkg/mod
+    volumes:
+      - ./:/app
+      - go-build-cache:/go-build-cache
+      - go-mod-cache:/go/pkg/mod
+    depends_on:
+      psql_bp:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+  psql_bp:
+    image: postgres:latest
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${BLUEPRINT_DB_DATABASE:-database}
+      POSTGRES_USER: ${BLUEPRINT_DB_USERNAME:-user}
+      POSTGRES_PASSWORD: ${BLUEPRINT_DB_PASSWORD:-password}
+    ports:
+      - "${BLUEPRINT_DB_PORT:-5432}:5432"
+    volumes:
+      - psql_volume_bp:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "${BLUEPRINT_DB_USERNAME:-user}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_volume:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  psql_volume_bp:
+  redis_volume:
+  go-build-cache:
+  go-mod-cache:
+
