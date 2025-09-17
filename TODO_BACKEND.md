@@ -46,38 +46,54 @@ GET  /api/v1/auth/notion/callback         - Handle OAuth callback
 - **Error Handling**: Structured HTTP error responses and validation
 - **Migrations**: Go-based database migrations using GORM AutoMigrate
 
-## Phase 2: Advanced Features (6-8 weeks) - CURRENT FOCUS 🎯
+## Phase 2: Event-Driven Synchronization (8-10 weeks) - CURRENT FOCUS 🎯
 
-### 4. Real-time Synchronization
-- [ ] Create WebSocket hub in `pkg/websocket` for managing connections and rooms
-- [ ] Implement WebSocket endpoints (`/api/v1/ws`) with user authentication
-- [ ] Create projects domain module following DDD pattern
-- [ ] Create tasks domain module with dependency and hierarchy support
-- [ ] Implement background service (using goroutines) to poll Notion API for changes
-- [ ] Add change detection logic and broadcast via WebSockets to subscribed clients
+> **Architectural Note:** This phase implements an event-driven architecture using **Watermill** as an internal event bus and **asynq** for background job processing. This approach provides high scalability and loose coupling between modules. See `ARCHITECTURE_EVENTS.md` for a detailed explanation.
 
-### 5. Core Feature Logic - Tasks & Projects
-- [ ] **Projects Module**: 
-    - [ ] Domain entities (Project, ProjectRepository)
-    - [ ] Application services (CreateProject, GetProject, SyncWithNotion) 
-    - [ ] Infrastructure (PostgreSQL repository, HTTP handlers)
-    - [ ] Database migrations for projects table
-- [ ] **Tasks Module**:
-    - [ ] Domain entities (Task, TaskDependency, TaskHierarchy)
-    - [ ] Business logic for task dependencies and cascade effects
-    - [ ] Critical path calculation algorithms
-    - [ ] Parent-child relationship management
-    - [ ] Database migrations for tasks, dependencies, and hierarchy tables
-- [ ] **API Endpoints**:
+### 4. Core Infrastructure Setup
+- [ ] Set up **Watermill** router and configure a publisher/subscriber model
+- [ ] Set up **asynq** client and server for background job processing
+- [ ] Define core domain events (e.g., `NotionWebhookReceived`, `TaskPropertiesUpdated`)
+
+### 5. Project Module & Initial Sync
+- [ ] Create `projects` domain module (DDD: entity, repository)
+- [ ] Add database migration for `projects` table (including `notion_webhook_secret`)
+- [ ] Implement PostgreSQL repository for projects
+- [ ] Create `ProjectSyncService` for handling bulk data synchronization from Notion
+- [ ] Implement `PerformInitialSync` logic to fetch and store all tasks when a project is first added
+
+### 6. Notion Webhook & Event-Driven Flow
+- [ ] Create `/api/v1/webhooks/notion` endpoint that validates and publishes a `NotionWebhookReceived` event to Watermill
+- [ ] Create a `WebhookTriage` Watermill subscriber to process raw events and publish specific domain events (e.g., `TaskPropertiesUpdated`)
+- [ ] Create a `TaskSynchronizer` Watermill subscriber to update the local database based on domain events
+- [ ] Implement robust `X-Notion-Signature` validation for security
+
+### 7. Core Feature Logic - Tasks & Background Jobs
+- [ ] Create `tasks` domain module with dependency and hierarchy support
+- [ ] Create a `CriticalPathService` Watermill subscriber that enqueues a job in **asynq** when a task's date changes
+- [ ] Create an **asynq** worker for heavy-lifting tasks like critical path calculation
+- [ ] Domain entities (Task, TaskDependency, TaskHierarchy)
+- [ ] Business logic for task dependencies and cascade effects
+- [ ] Database migrations for `tasks`, `dependencies`, and `hierarchy` tables
+
+### 8. API Endpoints & Real-time Frontend Updates
+- [ ] **Handle Eventual Consistency in API/UI:** Define a clear contract for notifying the frontend about ongoing background processes (e.g., a "syncing" status in API responses or via WebSocket) so it can display appropriate indicators until a final confirmation event is received.
+- [ ] **Projects API**:
     - [ ] `GET /api/v1/projects` - List user projects
-    - [ ] `POST /api/v1/projects` - Create/sync project from Notion
+    - [ ] `POST /api/v1/projects` - Create/sync project from Notion (triggers initial sync)
+    - [ ] `POST /api/v1/projects/{id}/resync` - Manually trigger a full re-synchronization
+    - [ ] `DELETE /api/v1/projects/{id}` - Delete a project
+- [ ] **Tasks API**:
     - [ ] `GET /api/v1/projects/{id}/tasks` - Get project tasks with dependencies
     - [ ] `PUT /api/v1/tasks/{id}/dependencies` - Update task dependencies
-    - [ ] `GET /api/v1/tasks/{id}/critical-path` - Calculate critical path
+- [ ] **WebSocket Hub**:
+    - [ ] Create WebSocket hub in `pkg/websocket` for managing connections
+    - [ ] Create a `WebSocketNotifier` Watermill subscriber that listens for events (e.g., `CriticalPathCalculated`) and pushes updates to clients
+    - [ ] Implement `/api/v1/ws` endpoint with user authentication
 
 ## Phase 3: PM Features (4-6 weeks)
 
-### 6. Additional Features & Scalability
+### 9. Additional Features & Scalability
 - [ ] Implement API endpoints for time tracking.
 - [ ] Implement API endpoints for multi-project dashboard data.
 - [ ] Develop logic for team workload visualization.
