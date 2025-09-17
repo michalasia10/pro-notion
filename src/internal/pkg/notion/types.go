@@ -7,13 +7,19 @@ import (
 
 // APIError represents an error returned by the Notion API
 type APIError struct {
-	Object  string `json:"object"`
-	Status  int    `json:"status"`
-	Code    string `json:"code"`
-	Message string `json:"message"`
+	Object           string `json:"object"`
+	Status           int    `json:"status"`
+	Code             string `json:"code"`
+	Message          string `json:"message"`
+	APIErrorType     string `json:"error"`
+	ErrorDescription string `json:"error_description"`
 }
 
 func (e *APIError) Error() string {
+	// Prefer OAuth error format if available
+	if e.APIErrorType != "" {
+		return fmt.Sprintf("Notion API error (%s): %s", e.APIErrorType, e.ErrorDescription)
+	}
 	return fmt.Sprintf("Notion API error (%s): %s", e.Code, e.Message)
 }
 
@@ -21,11 +27,9 @@ func (e *APIError) Error() string {
 
 // OAuthTokenRequest represents the request to exchange code for token
 type OAuthTokenRequest struct {
-	GrantType    string `json:"grant_type"`
-	Code         string `json:"code"`
-	RedirectURI  string `json:"redirect_uri"`
-	ClientID     string `json:"client_id"`
-	ClientSecret string `json:"client_secret"`
+	GrantType   string `json:"grant_type"`
+	Code        string `json:"code"`
+	RedirectURI string `json:"redirect_uri"`
 }
 
 // OAuthTokenResponse represents the OAuth token response
@@ -41,17 +45,29 @@ type OAuthTokenResponse struct {
 
 // User represents a Notion user
 type User struct {
-	Object    string `json:"object"`
-	ID        string `json:"id"`
-	Type      string `json:"type"`
-	Name      string `json:"name"`
-	AvatarURL string `json:"avatar_url"`
-	Person    Person `json:"person,omitempty"`
+	Object    string  `json:"object"`
+	ID        string  `json:"id"`
+	Type      string  `json:"type"`
+	Name      string  `json:"name"`
+	AvatarURL *string `json:"avatar_url"`
+	Person    *Person `json:"person,omitempty"`
+	Bot       *Bot    `json:"bot,omitempty"`
 }
 
 // Person represents person details for a user
 type Person struct {
 	Email string `json:"email"`
+}
+
+// Bot represents bot-specific information
+type Bot struct {
+	Owner BotOwner `json:"owner"`
+}
+
+// BotOwner represents the owner of a bot
+type BotOwner struct {
+	Type string `json:"type"`
+	User User   `json:"user"`
 }
 
 // Database Types

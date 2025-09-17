@@ -9,6 +9,11 @@ import (
 	"time"
 )
 
+const (
+	authTypeBearer = "Bearer"
+	authTypeBasic  = "Basic"
+)
+
 // Client represents a Notion API client
 type Client struct {
 	baseURL    string
@@ -40,6 +45,7 @@ func NewClient(opts ...ClientOption) *Client {
 		apiVersion: "2022-06-28",
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
+			Jar:     nil,
 		},
 	}
 
@@ -51,9 +57,8 @@ func NewClient(opts ...ClientOption) *Client {
 }
 
 // makeRequest performs an HTTP request to the Notion API
-func (c *Client) makeRequest(method, endpoint string, body interface{}, accessToken string) (*http.Response, error) {
+func (c *Client) makeRequest(method, path string, body interface{}, token string, authType string) (*http.Response, error) {
 	var reqBody io.Reader
-
 	if body != nil {
 		jsonBody, err := json.Marshal(body)
 		if err != nil {
@@ -62,7 +67,7 @@ func (c *Client) makeRequest(method, endpoint string, body interface{}, accessTo
 		reqBody = bytes.NewBuffer(jsonBody)
 	}
 
-	url := fmt.Sprintf("%s%s", c.baseURL, endpoint)
+	url := fmt.Sprintf("%s%s", c.baseURL, path)
 	req, err := http.NewRequest(method, url, reqBody)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
@@ -72,38 +77,38 @@ func (c *Client) makeRequest(method, endpoint string, body interface{}, accessTo
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Notion-Version", c.apiVersion)
 
-	if accessToken != "" {
-		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", accessToken))
+	if token != "" {
+		req.Header.Set("Authorization", fmt.Sprintf("%s %s", authType, token))
 	}
-
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("request failed: %w", err)
+		return resp, fmt.Errorf("failed to execute request: %w", err)
 	}
 
 	return resp, nil
 }
 
-// handleResponse processes the HTTP response and handles errors
+// handleResponse handles the API response
 func (c *Client) handleResponse(resp *http.Response, result interface{}) error {
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return fmt.Errorf("failed to read response body: %w", err)
-	}
-
-	if resp.StatusCode >= 400 {
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusBadRequest {
 		var apiErr APIError
-		if err := json.Unmarshal(body, &apiErr); err != nil {
-			return fmt.Errorf("API error (status %d): %s", resp.StatusCode, string(body))
+		bodyBytes, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return fmt.Errorf("failed to read error response body: %w", err)
+		}
+
+		defer resp.Body.Close()
+
+		if err := json.Unmarshal(bodyBytes, &apiErr); err != nil {
+			return fmt.Errorf("failed to unmarshal error response (status: %s): %s", resp.Status, string(bodyBytes))
 		}
 		return &apiErr
 	}
 
+	defer resp.Body.Close()
 	if result != nil {
-		if err := json.Unmarshal(body, result); err != nil {
-			return fmt.Errorf("failed to unmarshal response: %w", err)
+		if err := json.NewDecoder(resp.Body).Decode(result); err != nil {
+			return fmt.Errorf("failed to decode response: %w", err)
 		}
 	}
 

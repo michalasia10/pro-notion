@@ -12,6 +12,10 @@ LOAD_ENV := set -a; if [ -f $(ENV_FILE) ]; then . $(ENV_FILE); fi; set +a
 # Build the application
 all: build-binary test
 
+build:
+	@echo "Building binary for air..."
+	@cd src && go build -o main ./cmd/api
+
 build-binary:
 	@echo "Building binary..."
 	@mkdir -p bin

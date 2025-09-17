@@ -1,7 +1,9 @@
 package notion
 
 import (
+	"encoding/base64"
 	"fmt"
+	"log"
 	"net/url"
 )
 
@@ -35,27 +37,27 @@ func (o *OAuth) GetAuthorizationURL(state string) string {
 	if state != "" {
 		params.Add("state", state)
 	}
-
 	return fmt.Sprintf("%s?%s", baseURL, params.Encode())
 }
 
 // ExchangeCodeForToken exchanges an authorization code for an access token
 func (o *OAuth) ExchangeCodeForToken(code string) (*OAuthTokenResponse, error) {
 	tokenReq := OAuthTokenRequest{
-		GrantType:    "authorization_code",
-		Code:         code,
-		RedirectURI:  o.redirectURI,
-		ClientID:     o.clientID,
-		ClientSecret: o.clientSecret,
+		GrantType:   "authorization_code",
+		Code:        code,
+		RedirectURI: o.redirectURI,
 	}
+	accessToken := base64.StdEncoding.EncodeToString(fmt.Appendf(nil, "%s:%s", o.clientID, o.clientSecret))
 
-	resp, err := o.client.makeRequest("POST", "/oauth/token", tokenReq, "")
+	resp, err := o.client.makeRequest("POST", "/oauth/token", tokenReq, accessToken, authTypeBasic)
 	if err != nil {
 		return nil, fmt.Errorf("failed to exchange code for token: %w", err)
 	}
 
 	var tokenResp OAuthTokenResponse
+	log.Println("resp", resp.Body)
 	if err := o.client.handleResponse(resp, &tokenResp); err != nil {
+		log.Printf("failed to parse token response: %v", err)
 		return nil, fmt.Errorf("failed to parse token response: %w", err)
 	}
 
@@ -64,7 +66,7 @@ func (o *OAuth) ExchangeCodeForToken(code string) (*OAuthTokenResponse, error) {
 
 // GetCurrentUser retrieves the current user information
 func (o *OAuth) GetCurrentUser(accessToken string) (*User, error) {
-	resp, err := o.client.makeRequest("GET", "/users/me", nil, accessToken)
+	resp, err := o.client.makeRequest("GET", "/users/me", nil, accessToken, authTypeBearer)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get current user: %w", err)
 	}

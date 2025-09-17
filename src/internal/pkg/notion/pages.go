@@ -18,7 +18,7 @@ func NewPages(opts ...ClientOption) *Pages {
 
 // Create creates a new page
 func (p *Pages) Create(accessToken string, request *CreatePageRequest) (*Page, error) {
-	resp, err := p.client.makeRequest("POST", "/pages", request, accessToken)
+	resp, err := p.client.makeRequest("POST", "/pages", request, accessToken, authTypeBearer)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create page: %w", err)
 	}
@@ -35,7 +35,7 @@ func (p *Pages) Create(accessToken string, request *CreatePageRequest) (*Page, e
 func (p *Pages) Retrieve(accessToken, pageID string) (*Page, error) {
 	endpoint := fmt.Sprintf("/pages/%s", pageID)
 
-	resp, err := p.client.makeRequest("GET", endpoint, nil, accessToken)
+	resp, err := p.client.makeRequest("GET", endpoint, nil, accessToken, authTypeBearer)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve page: %w", err)
 	}
@@ -52,7 +52,7 @@ func (p *Pages) Retrieve(accessToken, pageID string) (*Page, error) {
 func (p *Pages) Update(accessToken, pageID string, request *UpdatePageRequest) (*Page, error) {
 	endpoint := fmt.Sprintf("/pages/%s", pageID)
 
-	resp, err := p.client.makeRequest("PATCH", endpoint, request, accessToken)
+	resp, err := p.client.makeRequest("PATCH", endpoint, request, accessToken, authTypeBearer)
 	if err != nil {
 		return nil, fmt.Errorf("failed to update page: %w", err)
 	}
@@ -69,7 +69,7 @@ func (p *Pages) Update(accessToken, pageID string, request *UpdatePageRequest) (
 func (p *Pages) GetPropertyItem(accessToken, pageID, propertyID string) (*PropertyValue, error) {
 	endpoint := fmt.Sprintf("/pages/%s/properties/%s", pageID, propertyID)
 
-	resp, err := p.client.makeRequest("GET", endpoint, nil, accessToken)
+	resp, err := p.client.makeRequest("GET", endpoint, nil, accessToken, authTypeBearer)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get property item: %w", err)
 	}

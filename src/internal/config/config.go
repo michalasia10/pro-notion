@@ -63,12 +63,12 @@ func Load() *Config {
 	cfg.Port = port
 
 	// Database
-	cfg.Database.Host = getEnv("DB_HOST", "localhost")
-	cfg.Database.Port = getEnv("DB_PORT", "5432")
-	cfg.Database.Username = getEnv("DB_USERNAME", "postgres")
-	cfg.Database.Password = getEnv("DB_PASSWORD", "")
-	cfg.Database.Database = getEnv("DB_DATABASE", "pro_notion")
-	cfg.Database.Schema = getEnv("DB_SCHEMA", "public")
+	cfg.Database.Host = getEnv("BLUEPRINT_DB_HOST", "localhost")
+	cfg.Database.Port = getEnv("BLUEPRINT_DB_PORT", "5432")
+	cfg.Database.Username = getEnv("BLUEPRINT_DB_USERNAME", "postgres")
+	cfg.Database.Password = getEnv("BLUEPRINT_DB_PASSWORD", "")
+	cfg.Database.Database = getEnv("BLUEPRINT_DB_DATABASE", "pro_notion")
+	cfg.Database.Schema = getEnv("BLUEPRINT_DB_SCHEMA", "public")
 
 	// Redis
 	cfg.Redis.Host = getEnv("REDIS_HOST", "localhost")

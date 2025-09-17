@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"fmt"
+	"log"
 
 	shared "src/internal/modules/shared/domain"
 	"src/internal/modules/users/domain"
@@ -57,21 +58,23 @@ func (uc *NotionOAuthUseCase) Execute(ctx context.Context, req NotionOAuthReques
 		// Exchange code for token
 		tokenResp, err := uc.notionClient.ExchangeCodeForToken(req.Code)
 		if err != nil {
-			return fmt.Errorf("failed to exchange code for token: %w", err)
+			return fmt.Errorf("failed to exchange code for token ( us ): %w", err)
 		}
 
 		// Get user info from Notion
+		log.Println("tokenResp", tokenResp)
 		notionUser, err := uc.notionClient.GetCurrentUser(tokenResp.AccessToken)
 		if err != nil {
-			return fmt.Errorf("failed to get user info: %w", err)
+			return fmt.Errorf("failed to get user info ( us ): %w", err)
 		}
 
 		// Extract email from person object
 		email := ""
-		if notionUser.Person.Email != "" {
+		if notionUser.Person != nil && notionUser.Person.Email != "" {
 			email = notionUser.Person.Email
+		} else if notionUser.Bot != nil && notionUser.Bot.Owner.User.Person != nil && notionUser.Bot.Owner.User.Person.Email != "" {
+			email = notionUser.Bot.Owner.User.Person.Email
 		} else {
-			// If no email available, we can't proceed
 			return fmt.Errorf("no email available from Notion user")
 		}
 

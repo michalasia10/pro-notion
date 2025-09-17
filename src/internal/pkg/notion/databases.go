@@ -20,7 +20,7 @@ func NewDatabases(opts ...ClientOption) *Databases {
 func (d *Databases) Query(accessToken, databaseID string, request *DatabaseQueryRequest) (*DatabaseQueryResponse, error) {
 	endpoint := fmt.Sprintf("/databases/%s/query", databaseID)
 
-	resp, err := d.client.makeRequest("POST", endpoint, request, accessToken)
+	resp, err := d.client.makeRequest("POST", endpoint, request, accessToken, authTypeBearer)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query database: %w", err)
 	}
@@ -37,7 +37,7 @@ func (d *Databases) Query(accessToken, databaseID string, request *DatabaseQuery
 func (d *Databases) Retrieve(accessToken, databaseID string) (*Database, error) {
 	endpoint := fmt.Sprintf("/databases/%s", databaseID)
 
-	resp, err := d.client.makeRequest("GET", endpoint, nil, accessToken)
+	resp, err := d.client.makeRequest("GET", endpoint, nil, accessToken, authTypeBearer)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve database: %w", err)
 	}
@@ -69,7 +69,7 @@ func (d *Databases) List(accessToken string, startCursor string, pageSize int) (
 		request["page_size"] = pageSize
 	}
 
-	resp, err := d.client.makeRequest("POST", endpoint, request, accessToken)
+	resp, err := d.client.makeRequest("POST", endpoint, request, accessToken, authTypeBearer)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list databases: %w", err)
 	}
