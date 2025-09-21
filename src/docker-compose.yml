@@ -21,6 +21,46 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+  event_worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    working_dir: /app
+    command: sh -c "go run ./cmd/event_worker"
+    env_file:
+      - .env
+    environment:
+      - GOCACHE=/go-build-cache
+      - GOMODCACHE=/go/pkg/mod
+    volumes:
+      - ./:/app
+      - go-build-cache:/go-build-cache
+      - go-mod-cache:/go/pkg/mod
+    depends_on:
+      psql_bp:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+  job_worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    working_dir: /app
+    command: sh -c "go run ./cmd/job_worker"
+    env_file:
+      - .env
+    environment:
+      - GOCACHE=/go-build-cache
+      - GOMODCACHE=/go/pkg/mod
+    volumes:
+      - ./:/app
+      - go-build-cache:/go-build-cache
+      - go-mod-cache:/go/pkg/mod
+    depends_on:
+      psql_bp:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
   psql_bp:
     image: postgres:latest
     restart: unless-stopped

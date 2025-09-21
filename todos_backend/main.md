@@ -50,10 +50,19 @@ GET  /api/v1/auth/notion/callback         - Handle OAuth callback
 
 > **Architectural Note:** This phase implements an event-driven architecture using **Watermill** as an internal event bus and **asynq** for background job processing. This approach provides high scalability and loose coupling between modules. See `ARCHITECTURE_EVENTS.md` for a detailed explanation.
 
+> **Progress Update:** Step 1 (Core Infrastructure Setup) - ✅ COMPLETED<br>
+> **Next:** Step 1.5 (Infrastructure Testing & Validation) - 📝 Ready to start
+
 ### 4. Core Infrastructure Setup
-- [ ] Set up **Watermill** router and configure a publisher/subscriber model
-- [ ] Set up **asynq** client and server for background job processing
-- [ ] Define core domain events (e.g., `NotionWebhookReceived`, `TaskPropertiesUpdated`)
+- [x] Set up **Watermill** router and configure a publisher/subscriber model
+- [x] Set up **asynq** client and server for background job processing
+- [x] Define core domain events (e.g., `NotionWebhookReceived`, `TaskPropertiesUpdated`)
+
+### 4.5. Infrastructure Testing & Validation
+- [ ] Test docker-compose setup with all new services
+- [ ] Validate worker connectivity to PostgreSQL and Redis
+- [ ] Test basic event publishing and consumption
+- [ ] Test basic job queuing and processing
 
 ### 5. Project Module & Initial Sync
 - [ ] Create `projects` domain module (DDD: entity, repository)

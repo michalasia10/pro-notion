@@ -1,6 +1,7 @@
 package config
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -42,6 +43,10 @@ type Config struct {
 	// JWT configuration
 	JWT struct {
 		Secret string
+	}
+	Async struct {
+		Concurrency int
+		Queues      map[string]int
 	}
 }
 
@@ -87,6 +92,20 @@ func Load() *Config {
 	// Validate required config
 	if cfg.Notion.ClientID == "" || cfg.Notion.ClientSecret == "" {
 		log.Println("Warning: Notion Client ID and Secret not configured. OAuth flow will not work.")
+	}
+
+	// Async
+	asyncConcurrency, err := strconv.Atoi(getEnv("ASYNC_CONCURRENCY", "10"))
+	if err != nil {
+		log.Fatalf("Invalid ASYNC_CONCURRENCY value: %v", err)
+	}
+	cfg.Async.Concurrency = asyncConcurrency
+
+	asyncQueues := getEnv("ASYNC_QUEUES", "{\"critical\": 6, \"default\": 3}")
+	cfg.Async.Queues = make(map[string]int)
+	err = json.Unmarshal([]byte(asyncQueues), &cfg.Async.Queues)
+	if err != nil {
+		log.Fatalf("Invalid ASYNC_QUEUES value: %v", err)
 	}
 
 	return cfg

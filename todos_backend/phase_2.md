@@ -6,14 +6,27 @@
 
 ### Step 1: Core Infrastructure Setup
 *   **Goal:** Establish the foundational infrastructure for handling events and background jobs.
+*   **Status:** ✅ COMPLETED
+
+| Task | Implementation Details | Status |
+| :--- | :--- | :--- |
+| **Create `eventbus` and `taskqueue` packages** | **`src/internal/pkg/eventbus/watermill.go`**: <br> - `NewPublisher()` -> `message.Publisher` <br> - `NewRouter(logger watermill.LoggerAdapter)` -> `*message.Router` <br> - Start with `GoChannel` implementation for local dev. <br> **`src/internal/pkg/taskqueue/asynq.go`**: <br> - `NewClient()` -> `*asynq.Client` <br> - `NewServer(redisOpt asynq.RedisConnOpt)` -> `*asynq.Server` | `[x]` |
+| **Create worker entry points** | **`src/cmd/event_worker/main.go`**: <br> - Initializes config, logger. <br> - Creates a Watermill router using `eventbus.NewRouter()`. <br> - Ready to register event subscriber handlers. <br> - Runs the router: `router.Run(ctx)`. <br> **`src/cmd/job_worker/main.go`**: <br> - Initializes config, logger, redis. <br> - Creates an `asynq.ServeMux` to act as the handler. <br> - Ready to register job handlers to the mux. <br> - Creates and runs the Asynq server using `taskqueue.NewServer()`. | `[x]` |
+| **Update `src/docker-compose.yml`** | Add two new services by duplicating the `api` service configuration. The key change will be the `command` property: <br> ```yaml <br> event_worker: <br>   build: <br>     context: . <br>     dockerfile: Dockerfile.dev <br>   working_dir: /app <br>   command: sh -c "go run ./cmd/event_worker" <br>   env_file: [ .env ] <br>   volumes: [ ".:/app", ... ] <br>   depends_on: <br>     psql_bp: { condition: service_healthy } <br>     redis: { condition: service_healthy } <br> <br> job_worker: <br>   # ... similar config ... <br>   command: sh -c "go run ./cmd/job_worker" <br> ``` <br> *Note: Using `go run` directly for development simplicity.* | `[x]` |
+| **Define core domain events** | Create `src/internal/modules/shared/domain/events/events.go`. <br> Add the first event struct and topic constant: <br> ```go <br> package events <br> <br> const NotionWebhookReceivedTopic = "notion.webhook.received" <br> <br> type NotionWebhookReceived struct { <br>   Payload []byte <br> } <br> ``` | `[x]` |
+
+---
+
+### Step 1.5: Infrastructure Testing & Validation
+*   **Goal:** Test and validate that all infrastructure components work together properly.
 *   **Status:** 📝 To Do
 
 | Task | Implementation Details | Status |
 | :--- | :--- | :--- |
-| **Create `eventbus` and `taskqueue` packages** | **`src/internal/pkg/eventbus/watermill.go`**: <br> - `NewPublisher()` -> `message.Publisher` <br> - `NewRouter(logger watermill.LoggerAdapter)` -> `*message.Router` <br> - Start with `GoChannel` implementation for local dev. <br> **`src/internal/pkg/taskqueue/asynq.go`**: <br> - `NewClient()` -> `*asynq.Client` <br> - `NewServer(redisOpt asynq.RedisConnOpt, handler asynq.Handler)` -> `*asynq.Server` | `[ ]` |
-| **Create worker entry points** | **`src/cmd/event_worker/main.go`**: <br> - Initializes config, logger, db connection. <br> - Creates a Watermill router using `eventbus.NewRouter()`. <br> - Registers all event subscriber handlers to the router. <br> - Runs the router: `router.Run(ctx)`. <br> **`src/cmd/job_worker/main.go`**: <br> - Initializes config, logger, db, redis. <br> - Creates an `asynq.ServeMux` to act as the handler. <br> - Registers all job handlers to the mux. <br> - Creates and runs the Asynq server using `taskqueue.NewServer()`. | `[ ]` |
-| **Update `src/docker-compose.yml`** | Add two new services by duplicating the `api` service configuration. The key change will be the `command` property: <br> ```yaml <br> event_worker: <br>   build: <br>     context: . <br>     dockerfile: Dockerfile.dev <br>   working_dir: /app <br>   command: sh -c "air -c .air.toml event_worker" # Or similar for live reload <br>   env_file: [ .env ] <br>   volumes: [ ".:/app", ... ] <br>   depends_on: <br>     psql_bp: { condition: service_healthy } <br>     redis: { condition: service_healthy } <br> <br> job_worker: <br>   # ... similar config ... <br>   command: sh -c "air -c .air.toml job_worker" <br> ``` <br> *Note: This assumes we will adapt `.air.toml` to run different main packages.* | `[ ]` |
-| **Define core domain events** | Create `src/internal/modules/shared/domain/events/events.go`. <br> Add the first event struct and topic constant: <br> ```go <br> package events <br> <br> const NotionWebhookReceivedTopic = "notion.webhook.received" <br> <br> type NotionWebhookReceived struct { <br>   Payload []byte <br> } <br> ``` | `[ ]` |
+| **Test docker-compose setup** | Run `docker-compose up` and verify that all services start correctly: <br> - `api` service <br> - `event_worker` service <br> - `job_worker` service <br> - PostgreSQL and Redis health checks | `[ ]` |
+| **Validate worker connectivity** | Ensure workers can connect to: <br> - PostgreSQL database <br> - Redis instance <br> - Watermill event bus (GoChannel) | `[ ]` |
+| **Test basic event flow** | Create a simple test to verify event publishing: <br> - Publish `NotionWebhookReceived` event from a test script <br> - Verify it's received by event_worker (add temporary logging) | `[ ]` |
+| **Test basic job queuing** | Create a simple test to verify job queuing: <br> - Enqueue a basic job using Asynq client <br> - Verify it's processed by job_worker (add temporary logging) | `[ ]` |
 
 ---
 
