@@ -45,14 +45,14 @@
 
 ### Step 2.5: Authentication Middleware
 *   **Goal:** Implement JWT-based authentication middleware for secure API access.
-*   **Status:** 📝 To Do
+*   **Status:** ✅ COMPLETED
 
 | Task | Implementation Details | Status |
 | :--- | :--- | :--- |
-| **Create JWT middleware** | **`src/internal/pkg/middleware/auth.go`**: <br> - JWT token validation middleware <br> - Extract user ID from token claims <br> - Handle authentication errors | `[ ]` |
-| **Update projects router** | Modify `src/internal/modules/projects/interfaces/http/router.go` to: <br> - Remove placeholder user ID <br> - Use authenticated user ID from middleware context | `[ ]` |
-| **Add user context helper** | **`src/internal/pkg/middleware/context.go`**: <br> - Helper functions to get/set user ID in request context <br> - Type-safe context keys | `[ ]` |
-| **Test authentication flow** | Verify JWT tokens are properly validated and user context is available | `[ ]` |
+| **Create JWT middleware** | **`src/internal/pkg/middleware/auth.go`**: <br> - JWT token validation middleware <br> - Extract user ID from token claims <br> - Handle authentication errors | `[x]` |
+| **Update projects router** | Modify `src/internal/modules/projects/interfaces/http/router.go` to: <br> - Remove placeholder user ID <br> - Use authenticated user ID from middleware context | `[x]` |
+| **Add user context helper** | **`src/internal/pkg/middleware/context.go`**: <br> - Helper functions to get/set user ID in request context <br> - Type-safe context keys | `[x]` |
+| **Test authentication flow** | Verify JWT tokens are properly validated and user context is available | `[x]` |
 
 ---
 
@@ -65,5 +65,5 @@
 | **Create use cases** | **`src/internal/modules/projects/application/create_project.go`**: <br> - `CreateProjectUseCase` with validation and repository interaction | `[x]` |
 | **Create HTTP handlers** | **`src/internal/modules/projects/interfaces/http/router.go`**: <br> - POST `/` for creating projects <br> - GET `/` for listing user projects | `[x]` |
 | **Create DTOs** | **`src/internal/modules/projects/interfaces/http/dto.go`**: <br> - `CreateProjectRequestDTO`, `ProjectResponseDTO`, `ProjectsListResponseDTO` <br> - Functions for mapping between domain and DTO | `[x]` |
-| **Integrate with main API** | Update `src/internal/server/routes.go` to mount projects router at `/api/v1/projects` | `[ ]` |
+| **Integrate with main API** | Update `src/internal/server/routes.go` to mount projects router at `/api/v1/projects` | `[x]` |
 | **Test end-to-end flow** | Create a project via API and verify it's stored in database | `[ ]` |

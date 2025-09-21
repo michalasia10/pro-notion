@@ -74,15 +74,15 @@ GET  /api/v1/auth/notion/callback         - Handle OAuth callback
 - [ ] Implement `PerformInitialSync` logic to fetch and store all tasks when a project is first added
 
 ### 5.25. Authentication Middleware
-- [ ] Create JWT middleware for API authentication
-- [ ] Add user context helpers for request handling
-- [ ] Update projects router to use authenticated user ID
-- [ ] Test authentication flow with JWT tokens
+- [x] Create JWT middleware for API authentication
+- [x] Add user context helpers for request handling
+- [x] Update projects router to use authenticated user ID
+- [x] Test authentication flow with JWT tokens
 
 ### 5.5. First End-to-End Flow (API & Webhook)
 - [x] Create use cases and HTTP handlers for projects
 - [x] Create DTOs for project operations
-- [ ] Integrate projects router with main API
+- [x] Integrate projects router with main API
 - [ ] Test end-to-end project creation flow
 
 ### 6. Notion Webhook & Event-Driven Flow
