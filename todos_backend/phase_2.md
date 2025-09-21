@@ -66,4 +66,18 @@
 | **Create HTTP handlers** | **`src/internal/modules/projects/interfaces/http/router.go`**: <br> - POST `/` for creating projects <br> - GET `/` for listing user projects | `[x]` |
 | **Create DTOs** | **`src/internal/modules/projects/interfaces/http/dto.go`**: <br> - `CreateProjectRequestDTO`, `ProjectResponseDTO`, `ProjectsListResponseDTO` <br> - Functions for mapping between domain and DTO | `[x]` |
 | **Integrate with main API** | Update `src/internal/server/routes.go` to mount projects router at `/api/v1/projects` | `[x]` |
-| **Test end-to-end flow** | Create a project via API and verify it's stored in database | `[ ]` |
+| **Test end-to-end flow** | Create a project via API and verify it's stored in database | `[-]` |
+
+---
+
+### Step 4: Notion Webhook & Event-Driven Flow
+*   **Goal:** Implement the core webhook ingestion and event publishing mechanism.
+*   **Status:** ✅ COMPLETED
+
+| Task | Implementation Details | Status |
+| :--- | :--- | :--- |
+| **Add Webhook Secret to Config** | **`src/internal/config/config.go`**: <br> - Add `WebhookSecret` string field to the `Notion` struct. <br> - Load it from an environment variable `NOTION_WEBHOOK_SECRET`. | `[x]` |
+| **Create Webhook Middleware** | **`src/internal/pkg/middleware/notion_webhook.go`**: <br> - Create a new middleware for webhook signature validation. <br> - It will read the raw request body. <br> - Compute HMAC-SHA256 signature using the secret from config. <br> - Compare signatures using `hmac.Equal` for security. <br> - If invalid, return `401 Unauthorized`. If valid, store the raw body in request context. | `[x]` |
+| **Create Webhook Router & Handler** | **`src/internal/modules/webhooks/interfaces/http/router.go`**: <br> - Create a new `webhooks` module structure. <br> - The router will define one endpoint: `POST /notion`. <br> - The handler will handle the initial verification request and, for regular events, publish the `events.NotionWebhookReceived` event to Watermill. | `[x]` |
+| **Integrate Webhook Router** | **`src/internal/server/routes.go`**: <br> - Mount the new webhooks router at `/api/v1/webhooks`. <br> - Apply the new `notion_webhook` middleware specifically to this router group. | `[x]` |
+| **Test Webhook Flow** | **`src/internal/modules/webhooks/interfaces/http/router_test.go`**: <br> - Test the signature validation middleware. <br> - Test that a valid request correctly publishes an event on the Watermill bus (using a mock publisher). | `[x]` |

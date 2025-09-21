@@ -83,10 +83,10 @@ GET  /api/v1/auth/notion/callback         - Handle OAuth callback
 - [x] Create use cases and HTTP handlers for projects
 - [x] Create DTOs for project operations
 - [x] Integrate projects router with main API
-- [ ] Test end-to-end project creation flow
+- [-] Test end-to-end project creation flow (Skipped for now)
 
-### 6. Notion Webhook & Event-Driven Flow
-- [ ] Create `/api/v1/webhooks/notion` endpoint that validates and publishes a `NotionWebhookReceived` event to Watermill
+### 6. Notion Webhook & Event-Driven Flow ✅ COMPLETED
+- [x] Create `/api/v1/webhooks/notion` endpoint that validates and publishes a `NotionWebhookReceived` event to Watermill
 - [ ] Create a `WebhookTriage` Watermill subscriber to process raw events and publish specific domain events (e.g., `TaskPropertiesUpdated`)
 - [ ] Create a `TaskSynchronizer` Watermill subscriber to update the local database based on domain events
 - [ ] Implement robust `X-Notion-Signature` validation for security

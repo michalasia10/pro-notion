@@ -34,10 +34,11 @@ type Config struct {
 
 	// Notion API configuration
 	Notion struct {
-		ClientID     string
-		ClientSecret string
-		RedirectURL  string
-		APIVersion   string
+		ClientID      string
+		ClientSecret  string
+		RedirectURL   string
+		APIVersion    string
+		WebhookSecret string
 	}
 
 	// JWT configuration
@@ -85,6 +86,7 @@ func Load() *Config {
 	cfg.Notion.ClientSecret = getEnv("NOTION_CLIENT_SECRET", "")
 	cfg.Notion.RedirectURL = getEnv("NOTION_REDIRECT_URL", "http://localhost:8080/api/v1/auth/notion/callback")
 	cfg.Notion.APIVersion = getEnv("NOTION_API_VERSION", "2022-06-28")
+	cfg.Notion.WebhookSecret = getEnv("NOTION_WEBHOOK_SECRET", "")
 
 	// JWT
 	cfg.JWT.Secret = getEnv("JWT_SECRET", "your-secret-key")

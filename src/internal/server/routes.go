@@ -15,6 +15,7 @@ import (
 
 	projectsHTTP "src/internal/modules/projects/interfaces/http"
 	usersHTTP "src/internal/modules/users/interfaces/http"
+	webhooksHTTP "src/internal/modules/webhooks/interfaces/http"
 	authmw "src/internal/pkg/middleware"
 )
 
@@ -44,6 +45,12 @@ func (s *Server) RegisterRoutes() http.Handler {
 		r.Route("/projects", func(r chi.Router) {
 			r.Use(authmw.JWTAuthMiddleware)
 			r.Mount("/", projectsHTTP.NewRouter())
+		})
+
+		// Webhook routes with signature validation
+		r.Route("/webhooks", func(r chi.Router) {
+			r.Use(authmw.NotionWebhookMiddleware)
+			r.Mount("/", webhooksHTTP.NewRouter(s.publisher))
 		})
 	})
 
