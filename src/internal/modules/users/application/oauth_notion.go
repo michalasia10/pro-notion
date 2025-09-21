@@ -7,6 +7,7 @@ import (
 
 	shared "src/internal/modules/shared/domain"
 	"src/internal/modules/users/domain"
+	"src/internal/pkg/middleware"
 	"src/internal/pkg/notion"
 )
 
@@ -22,6 +23,7 @@ type NotionOAuthResponse struct {
 	AccessToken string
 	WorkspaceID string
 	BotID       string
+	JWTToken    string
 }
 
 // NotionOAuthUseCase handles Notion OAuth flow completion
@@ -126,11 +128,18 @@ func (uc *NotionOAuthUseCase) Execute(ctx context.Context, req NotionOAuthReques
 			}
 		}
 
+		// Generate JWT token for the user
+		jwtToken, err := middleware.GenerateJWTToken(user.ID)
+		if err != nil {
+			return fmt.Errorf("failed to generate JWT token: %w", err)
+		}
+
 		response = NotionOAuthResponse{
 			User:        user,
 			AccessToken: tokenResp.AccessToken,
 			WorkspaceID: tokenResp.WorkspaceID,
 			BotID:       tokenResp.BotID,
+			JWTToken:    jwtToken,
 		}
 
 		return nil

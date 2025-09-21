@@ -13,7 +13,9 @@ import (
 	"github.com/go-chi/cors"
 	"github.com/go-chi/render"
 
+	projectsHTTP "src/internal/modules/projects/interfaces/http"
 	usersHTTP "src/internal/modules/users/interfaces/http"
+	authmw "src/internal/pkg/middleware"
 )
 
 func (s *Server) RegisterRoutes() http.Handler {
@@ -37,6 +39,12 @@ func (s *Server) RegisterRoutes() http.Handler {
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Mount("/users", usersHTTP.NewRouter())
 		r.Mount("/auth", usersHTTP.NewAuthRouter())
+
+		// Protected routes requiring authentication
+		r.Route("/projects", func(r chi.Router) {
+			r.Use(authmw.JWTAuthMiddleware)
+			r.Mount("/", projectsHTTP.NewRouter())
+		})
 	})
 
 	return r

@@ -93,7 +93,7 @@ func NewAuthRouter() chi.Router {
 				return http.StatusInternalServerError, nil, err
 			}
 
-			dto := toNotionCallbackResponseDTO(resp.User)
+			dto := toNotionCallbackResponseDTO(resp.User, resp.JWTToken)
 			return http.StatusOK, dto, nil
 		}))
 	})

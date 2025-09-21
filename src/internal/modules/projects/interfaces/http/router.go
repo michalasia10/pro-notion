@@ -10,8 +10,7 @@ import (
 	"src/internal/modules/projects/infrastructure/postgres"
 	shared "src/internal/modules/shared/domain"
 	"src/internal/pkg/httpx"
-
-	"github.com/google/uuid"
+	"src/internal/pkg/middleware"
 )
 
 // NewRouter creates a new HTTP router for the projects module
@@ -33,11 +32,10 @@ func NewRouter() chi.Router {
 			return http.StatusUnprocessableEntity, nil, err
 		}
 
-		// TODO: Get user ID from JWT token/authentication context
-		// For now, using a placeholder - this should come from auth middleware
-		userID, err := uuid.Parse("00000000-0000-0000-0000-000000000001") // Placeholder
+		// Get authenticated user ID from JWT token
+		userID, err := middleware.GetUserID(req.Context())
 		if err != nil {
-			return http.StatusInternalServerError, nil, err
+			return http.StatusUnauthorized, nil, err
 		}
 
 		resp, err := createProjectUC.Execute(req.Context(), application.CreateProjectRequest{
@@ -54,11 +52,10 @@ func NewRouter() chi.Router {
 	}))
 
 	r.Get("/", httpx.Endpoint(func(req *http.Request) (int, any, error) {
-		// TODO: Get user ID from JWT token/authentication context
-		// For now, using a placeholder - this should come from auth middleware
-		userID, err := uuid.Parse("00000000-0000-0000-0000-000000000001") // Placeholder
+		// Get authenticated user ID from JWT token
+		userID, err := middleware.GetUserID(req.Context())
 		if err != nil {
-			return http.StatusInternalServerError, nil, err
+			return http.StatusUnauthorized, nil, err
 		}
 
 		projects, err := repo.FindByUserID(req.Context(), userID)
