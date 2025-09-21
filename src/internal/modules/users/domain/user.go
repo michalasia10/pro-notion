@@ -3,6 +3,8 @@ package domain
 import (
 	"errors"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 var (
@@ -14,7 +16,8 @@ var (
 
 // User represents a user in the system
 type User struct {
-	ID        string
+	ID        uuid.UUID
+	PublicID  string
 	Email     string
 	Name      string
 	CreatedAt time.Time
@@ -28,10 +31,7 @@ type User struct {
 }
 
 // NewUser creates a new user with validation
-func NewUser(id, email, name string, clock Clock) (User, error) {
-	if id == "" {
-		return User{}, ErrInvalidUserID
-	}
+func NewUser(email, name string, idGen IDGenerator, clock Clock) (User, error) {
 	if email == "" {
 		return User{}, ErrInvalidEmail
 	}
@@ -39,7 +39,8 @@ func NewUser(id, email, name string, clock Clock) (User, error) {
 	now := clock.Now()
 
 	return User{
-		ID:        id,
+		ID:        uuid.New(),          // Internal UUID for DB relations and ordering
+		PublicID:  idGen.NewID("user"), // Public ID with prefix for API
 		Email:     email,
 		Name:      name,
 		CreatedAt: now,
@@ -72,4 +73,9 @@ func (u *User) HasValidNotionToken(clock Clock) bool {
 // Clock interface for dependency injection
 type Clock interface {
 	Now() time.Time
+}
+
+// IDGenerator provides unique ID generation for domain entities
+type IDGenerator interface {
+	NewID(prefix string) string
 }

@@ -81,9 +81,8 @@ func (uc *NotionOAuthUseCase) Execute(ctx context.Context, req NotionOAuthReques
 		// Try to find existing user by email
 		user, err := uc.repo.GetByEmail(ctx, email)
 		if err == domain.ErrUserNotFound {
-			// Create new user
-			userID := uc.idGen.NewID("usr")
-			user, err = domain.NewUser(userID, email, notionUser.Name, uc.clock)
+			// Create new user (ID and PublicID will be generated inside NewUser)
+			user, err = domain.NewUser(email, notionUser.Name, uc.idGen, uc.clock)
 			if err != nil {
 				return fmt.Errorf("failed to create new user: %w", err)
 			}

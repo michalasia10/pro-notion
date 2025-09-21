@@ -32,11 +32,38 @@
 
 ### Step 2: Project Module Implementation
 *   **Goal:** Create the business logic and data structures for managing projects.
+*   **Status:** ✅ COMPLETED
+
+| Task | Implementation Details | Status |
+| :--- | :--- | :--- |
+| **Create `projects` module structure** | Create `src/internal/modules/projects/` with subdirectories: <br> - `application` (use cases) <br> - `domain` (entities, value objects, repo interface) <br> - `infrastructure/postgres` (GORM implementation) <br> - `infrastructure/http` (handlers) <br> - `infrastructure/events` (subscribers) | `[x]` |
+| **Database Migration** | Create `src/migrations/20250921123742_create_projects.go`. <br> Inside, define a GORM model: `type ProjectRecord struct { gorm.Model; UserID uuid.UUID; NotionDatabaseID string; NotionWebhookSecret string; }`. <br> Use `m.AutoMigrate(&ProjectRecord{})` to create the table. | `[x]` |
+| **Define Entity and Repository** | **`src/internal/modules/projects/domain/project.go`**: <br> - Define the `Project` entity with validation and Clock interface. <br> **`src/internal/modules/projects/domain/repository.go`**: <br> - `type Repository interface { Save(ctx context.Context, project *Project) error; FindByID(ctx context.Context, id uuid.UUID) (*Project, error); ... }` | `[x]` |
+| **Implement PostgreSQL Repository** | **`src/internal/modules/projects/infrastructure/postgres/repository.go`**: <br> - `type ProjectRepository struct { db *gorm.DB }` <br> - Implement the `domain.Repository` interface with full CRUD operations. | `[x]` |
+
+---
+
+### Step 2.5: Authentication Middleware
+*   **Goal:** Implement JWT-based authentication middleware for secure API access.
 *   **Status:** 📝 To Do
 
 | Task | Implementation Details | Status |
 | :--- | :--- | :--- |
-| **Create `projects` module structure** | Create `src/internal/modules/projects/` with subdirectories: <br> - `application` (use cases) <br> - `domain` (entities, value objects, repo interface) <br> - `infrastructure/postgres` (GORM implementation) <br> - `infrastructure/http` (handlers) <br> - `infrastructure/events` (subscribers) | `[ ]` |
-| **Database Migration** | Create `src/migrations/00002_create_projects.go`. <br> Inside, define a GORM model: `type Project struct { gorm.Model; UserID uuid.UUID; NotionDatabaseID string; NotionWebhookSecret string; }`. <br> Use `db.AutoMigrate(&Project{})` to create the table. | `[ ]` |
-| **Define Entity and Repository** | **`src/internal/modules/projects/domain/project.go`**: <br> - Define the `Project` entity, which will be the "pure" domain model without GORM tags. <br> **`src/internal/modules/projects/domain/repository.go`**: <br> - `type Repository interface { Save(ctx context.Context, project *Project) error; FindByID(ctx context.Context, id uuid.UUID) (*Project, error); ... }` | `[ ]` |
-| **Implement PostgreSQL Repository** | **`src/internal/modules/projects/infrastructure/postgres/repository.go`**: <br> - `type GormRepository struct { db *gorm.DB }` <br> - Implement the `domain.Repository` interface. This layer will handle mapping between the domain entity and the GORM model. | `[ ]` |
+| **Create JWT middleware** | **`src/internal/pkg/middleware/auth.go`**: <br> - JWT token validation middleware <br> - Extract user ID from token claims <br> - Handle authentication errors | `[ ]` |
+| **Update projects router** | Modify `src/internal/modules/projects/interfaces/http/router.go` to: <br> - Remove placeholder user ID <br> - Use authenticated user ID from middleware context | `[ ]` |
+| **Add user context helper** | **`src/internal/pkg/middleware/context.go`**: <br> - Helper functions to get/set user ID in request context <br> - Type-safe context keys | `[ ]` |
+| **Test authentication flow** | Verify JWT tokens are properly validated and user context is available | `[ ]` |
+
+---
+
+### Step 3: First End-to-End Flow (API & Webhook)
+*   **Goal:** Connect all components into a single, working, simplified flow.
+*   **Status:** 📝 To Do
+
+| Task | Implementation Details | Status |
+| :--- | :--- | :--- |
+| **Create use cases** | **`src/internal/modules/projects/application/create_project.go`**: <br> - `CreateProjectUseCase` with validation and repository interaction | `[x]` |
+| **Create HTTP handlers** | **`src/internal/modules/projects/interfaces/http/router.go`**: <br> - POST `/` for creating projects <br> - GET `/` for listing user projects | `[x]` |
+| **Create DTOs** | **`src/internal/modules/projects/interfaces/http/dto.go`**: <br> - `CreateProjectRequestDTO`, `ProjectResponseDTO`, `ProjectsListResponseDTO` <br> - Functions for mapping between domain and DTO | `[x]` |
+| **Integrate with main API** | Update `src/internal/server/routes.go` to mount projects router at `/api/v1/projects` | `[ ]` |
+| **Test end-to-end flow** | Create a project via API and verify it's stored in database | `[ ]` |

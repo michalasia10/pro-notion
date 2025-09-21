@@ -35,7 +35,7 @@ type UsersListResponseDTO struct {
 // toUserResponseDTO converts a domain User to UserResponseDTO
 func toUserResponseDTO(user domain.User) UserResponseDTO {
 	return UserResponseDTO{
-		ID:        user.ID,
+		ID:        user.PublicID, // Use PublicID for API responses
 		Email:     user.Email,
 		Name:      user.Name,
 		CreatedAt: user.CreatedAt,

@@ -38,27 +38,24 @@ makemigrations:
 # Run migrations using our custom binary (imports Go migrations)
 migrate:
 	@$(LOAD_ENV); \
-	if [ -z "$$DB_USERNAME" ] || [ -z "$$DB_PASSWORD" ] || [ -z "$$DB_HOST" ] || [ -z "$$DB_PORT" ] || [ -z "$$DB_DATABASE" ] || [ -z "$$DB_SCHEMA" ]; then \
-		echo "Set DB_* env vars before running migrate"; \
-		exit 1; \
-	fi
-	@go run ./src/cmd/migrate up
+	echo "Running migrations with localhost database connection..."; \
+	cd src && \
+	BLUEPRINT_DB_HOST=localhost \
+	go run ./cmd/migrate up
 
 migrate-down:
 	@$(LOAD_ENV); \
-	if [ -z "$$DB_USERNAME" ] || [ -z "$$DB_PASSWORD" ] || [ -z "$$DB_HOST" ] || [ -z "$$DB_PORT" ] || [ -z "$$DB_DATABASE" ] || [ -z "$$DB_SCHEMA" ]; then \
-		echo "Set DB_* env vars before running migrate-down"; \
-		exit 1; \
-	fi
-	@go run ./src/cmd/migrate down
+	echo "Running migration rollback with localhost database connection..."; \
+	cd src && \
+	BLUEPRINT_DB_HOST=localhost \
+	go run ./cmd/migrate down
 
 migrate-status:
 	@$(LOAD_ENV); \
-	if [ -z "$$DB_USERNAME" ] || [ -z "$$DB_PASSWORD" ] || [ -z "$$DB_HOST" ] || [ -z "$$DB_PORT" ] || [ -z "$$DB_DATABASE" ] || [ -z "$$DB_SCHEMA" ]; then \
-		echo "Set DB_* env vars before running migrate-status"; \
-		exit 1; \
-	fi
-	@go run ./src/cmd/migrate status
+	echo "Checking migration status with localhost database connection..."; \
+	cd src && \
+	BLUEPRINT_DB_HOST=localhost \
+	go run ./cmd/migrate status
 
 dev-up:
 	@docker compose -f src/docker-compose.yml up -d
@@ -68,6 +65,7 @@ dev-rebuild:
 
 dev-down:
 	@docker compose -f src/docker-compose.yml down 
+
 
 dev-logs:
 	@docker compose -f src/docker-compose.yml logs -f api

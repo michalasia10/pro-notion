@@ -29,11 +29,11 @@ func (r *UserRepository) Create(ctx context.Context, user domain.User) (domain.U
 	return toDomainUser(record), nil
 }
 
-// GetByID retrieves a user by ID from the database
+// GetByID retrieves a user by PublicID from the database (API uses PublicID)
 func (r *UserRepository) GetByID(ctx context.Context, id string) (domain.User, error) {
 	var record UserRecord
 
-	err := r.db.WithContext(ctx).Where("id = ?", id).First(&record).Error
+	err := r.db.WithContext(ctx).Where("public_id = ?", id).First(&record).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return domain.User{}, domain.ErrUserNotFound
@@ -73,7 +73,7 @@ func (r *UserRepository) Update(ctx context.Context, user domain.User) (domain.U
 
 // Delete removes a user from the database
 func (r *UserRepository) Delete(ctx context.Context, id string) error {
-	result := r.db.WithContext(ctx).Where("id = ?", id).Delete(&UserRecord{})
+	result := r.db.WithContext(ctx).Where("public_id = ?", id).Delete(&UserRecord{})
 
 	if result.Error != nil {
 		return result.Error

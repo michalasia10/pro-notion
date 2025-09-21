@@ -52,7 +52,8 @@ GET  /api/v1/auth/notion/callback         - Handle OAuth callback
 
 > **Progress Update:** Step 1 (Core Infrastructure Setup) - ✅ COMPLETED<br>
 > **Step 1.5 (Infrastructure Testing & Validation) - ✅ COMPLETED**<br>
-> **Next:** Step 2 (Project Module Implementation) - 📝 Ready to start
+> **Step 2 (Project Module Implementation) - ✅ COMPLETED**<br>
+> **Next:** Step 2.5 (Authentication Middleware) - 📝 Ready to start
 
 ### 4. Core Infrastructure Setup
 - [x] Set up **Watermill** router and configure a publisher/subscriber model
@@ -66,11 +67,23 @@ GET  /api/v1/auth/notion/callback         - Handle OAuth callback
 - [x] Test basic job queuing and processing
 
 ### 5. Project Module & Initial Sync
-- [ ] Create `projects` domain module (DDD: entity, repository)
-- [ ] Add database migration for `projects` table (including `notion_webhook_secret`)
-- [ ] Implement PostgreSQL repository for projects
+- [x] Create `projects` domain module (DDD: entity, repository)
+- [x] Add database migration for `projects` table (including `notion_webhook_secret`)
+- [x] Implement PostgreSQL repository for projects
 - [ ] Create `ProjectSyncService` for handling bulk data synchronization from Notion
 - [ ] Implement `PerformInitialSync` logic to fetch and store all tasks when a project is first added
+
+### 5.25. Authentication Middleware
+- [ ] Create JWT middleware for API authentication
+- [ ] Add user context helpers for request handling
+- [ ] Update projects router to use authenticated user ID
+- [ ] Test authentication flow with JWT tokens
+
+### 5.5. First End-to-End Flow (API & Webhook)
+- [x] Create use cases and HTTP handlers for projects
+- [x] Create DTOs for project operations
+- [ ] Integrate projects router with main API
+- [ ] Test end-to-end project creation flow
 
 ### 6. Notion Webhook & Event-Driven Flow
 - [ ] Create `/api/v1/webhooks/notion` endpoint that validates and publishes a `NotionWebhookReceived` event to Watermill

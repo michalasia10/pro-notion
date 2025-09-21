@@ -55,11 +55,8 @@ func (uc *CreateUserUseCase) Execute(ctx context.Context, req CreateUserRequest)
 			return err
 		}
 
-		// Generate new ID
-		userID := uc.idGen.NewID("usr")
-
-		// Create domain entity
-		user, err := domain.NewUser(userID, req.Email, req.Name, uc.clock)
+		// Create domain entity (ID and PublicID will be generated inside NewUser)
+		user, err := domain.NewUser(req.Email, req.Name, uc.idGen, uc.clock)
 		if err != nil {
 			return err
 		}
