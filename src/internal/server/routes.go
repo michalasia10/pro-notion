@@ -49,7 +49,6 @@ func (s *Server) RegisterRoutes() http.Handler {
 
 		// Webhook routes with signature validation
 		r.Route("/webhooks", func(r chi.Router) {
-			r.Use(authmw.NotionWebhookMiddleware)
 			r.Mount("/", webhooksHTTP.NewRouter(s.publisher))
 		})
 	})

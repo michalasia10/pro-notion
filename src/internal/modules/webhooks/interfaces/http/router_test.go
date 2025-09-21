@@ -20,7 +20,6 @@ import (
 	"src/internal/config"
 	sharedEvents "src/internal/modules/shared/domain/events"
 	webhooksHTTP "src/internal/modules/webhooks/interfaces/http"
-	webhookmw "src/internal/pkg/middleware"
 )
 
 func testWebhookConfig() *config.Config {
@@ -56,9 +55,7 @@ var _ = Describe("Webhook Router", func() {
 		pubSub := gochannel.NewGoChannel(gochannel.Config{}, watermill.NewStdLogger(false, false))
 		publisher = pubSub
 
-		// Create router with middleware
-		webhookRouter := webhooksHTTP.NewRouter(publisher)
-		router = webhookmw.NotionWebhookMiddleware(webhookRouter)
+		router = webhooksHTTP.NewRouter(publisher)
 	})
 
 	AfterEach(func() {
@@ -71,7 +68,7 @@ var _ = Describe("Webhook Router", func() {
 		return "sha256=" + hex.EncodeToString(h.Sum(nil))
 	}
 
-	Context("NotionWebhookMiddleware", func() {
+	Context("Webhook validation", func() {
 		It("should reject requests without webhook secret configured", func() {
 			// Temporarily set empty secret
 			emptyCfg := &config.Config{
@@ -103,7 +100,7 @@ var _ = Describe("Webhook Router", func() {
 			router.ServeHTTP(rec, req)
 
 			Expect(rec.Code).To(Equal(http.StatusUnauthorized))
-			Expect(rec.Body.String()).To(ContainSubstring("Missing X-Notion-Signature header"))
+			Expect(rec.Body.String()).To(ContainSubstring("MISSING_SIGNATURE: Missing webhook signature header"))
 		})
 
 		It("should reject requests with invalid signature format", func() {
@@ -126,7 +123,7 @@ var _ = Describe("Webhook Router", func() {
 			router.ServeHTTP(rec, req)
 
 			Expect(rec.Code).To(Equal(http.StatusUnauthorized))
-			Expect(rec.Body.String()).To(ContainSubstring("Invalid signature"))
+			Expect(rec.Body.String()).To(ContainSubstring("INVALID_SIGNATURE: Invalid webhook signature"))
 		})
 
 		It("should accept requests with valid signature", func() {
