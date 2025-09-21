@@ -30,7 +30,7 @@ The proposed project structure will follow the standard Go layout, similar to th
 │   │   └── shared/         # Shared kernel logic (e.g., value objects)
 │   ├── pkg/                # Shared utility packages
 │   │   ├── notion/         # Client for Notion API
-│   │   └── websocket/      # WebSocket communication hub
+│   │   └── sse/            # Server-Sent Events (SSE) hub
 │   └── server/             # HTTP server setup (routing, middleware)
 ├── migrations/             # SQL migration files
 ├── go.mod
@@ -80,6 +80,6 @@ To implement our testing strategy, we will adopt the following libraries and con
 The `/internal/pkg` directory will house packages that are shared across different modules but are not core domain logic.
 
 *   `notion`: A dedicated client for interacting with the Notion API, handling authentication, requests, and error responses.
-*   `websocket`: A central hub for managing WebSocket connections, rooms, and broadcasting messages to clients. This will be used for real-time updates.
+*   `sse`: A central hub for managing Server-Sent Events (SSE) connections and broadcasting events to clients. This will be used for real-time updates.
 
 This architecture will provide a solid foundation for building a robust and scalable backend for the Project Overlay Management for Notion application.

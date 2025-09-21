@@ -77,7 +77,7 @@ GET  /api/v1/auth/notion/callback         - Handle OAuth callback
 - [ ] Database migrations for `tasks`, `dependencies`, and `hierarchy` tables
 
 ### 8. API Endpoints & Real-time Frontend Updates
-- [ ] **Handle Eventual Consistency in API/UI:** Define a clear contract for notifying the frontend about ongoing background processes (e.g., a "syncing" status in API responses or via WebSocket) so it can display appropriate indicators until a final confirmation event is received.
+- [ ] **Handle Eventual Consistency in API/UI:** Define a clear contract for notifying the frontend about ongoing background processes (e.g., a "syncing" status in API responses or via SSE) so it can display appropriate indicators until a final confirmation event is received.
 - [ ] **Projects API**:
     - [ ] `GET /api/v1/projects` - List user projects
     - [ ] `POST /api/v1/projects` - Create/sync project from Notion (triggers initial sync)
@@ -86,10 +86,10 @@ GET  /api/v1/auth/notion/callback         - Handle OAuth callback
 - [ ] **Tasks API**:
     - [ ] `GET /api/v1/projects/{id}/tasks` - Get project tasks with dependencies
     - [ ] `PUT /api/v1/tasks/{id}/dependencies` - Update task dependencies
-- [ ] **WebSocket Hub**:
-    - [ ] Create WebSocket hub in `pkg/websocket` for managing connections
-    - [ ] Create a `WebSocketNotifier` Watermill subscriber that listens for events (e.g., `CriticalPathCalculated`) and pushes updates to clients
-    - [ ] Implement `/api/v1/ws` endpoint with user authentication
+- [ ] **SSE Hub**:
+    - [ ] Create SSE hub in `pkg/sse` for managing connections
+    - [ ] Create a `SSENotifier` Watermill subscriber that listens for events (e.g., `CriticalPathCalculated`) and pushes updates to clients
+    - [ ] Implement `/api/v1/events` endpoint with user authentication
 
 ## Phase 3: PM Features (4-6 weeks)
 

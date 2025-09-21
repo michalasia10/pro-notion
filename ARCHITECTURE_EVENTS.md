@@ -26,7 +26,7 @@ sequenceDiagram
     participant CriticalPathService (Watermill Subscriber)
     participant Asynq (Task Queue)
     participant CriticalPathWorker (Asynq Handler)
-    participant WebSocketNotifier (Watermill Subscriber)
+    participant SSENotifier (Watermill Subscriber)
 
     Notion->>+API Gateway (Webhook): 1. Page properties changed
     API Gateway (Webhook)->>+Watermill (Event Bus): 2. Publish event: `NotionWebhookReceived`
@@ -39,8 +39,8 @@ sequenceDiagram
     CriticalPathWorker (Asynq Handler)->>PostgreSQL: Save critical path result
     CriticalPathWorker (Asynq Handler)->>+Watermill (Event Bus): 6. Publish event: `CriticalPathCalculated`
     
-    Watermill (Event Bus)-->>+WebSocketNotifier (Watermill Subscriber): 7. Receive event
-    WebSocketNotifier (Watermill Subscriber)->>Frontend Client: 8. Send WebSocket notification
+    Watermill (Event Bus)-->>+SSENotifier (Watermill Subscriber): 7. Receive event
+    SSENotifier (Watermill Subscriber)->>Frontend Client: 8. Send SSE notification
 ```
 
 ### Step-by-Step Breakdown:
@@ -57,7 +57,7 @@ sequenceDiagram
 
 6.  **Result Publication:** After finishing, the Asynq handler publishes a result event (e.g., `CriticalPathCalculated`) back to the Watermill bus.
 
-7.  **Frontend Notification:** The `WebSocketNotifier` (another Watermill subscriber) listens for result events and pushes updates to the client via WebSockets.
+7.  **Frontend Notification:** The `SSENotifier` (another Watermill subscriber) listens for result events and pushes updates to the client via Server-Sent Events.
 
 ## 3. Benefits of this Architecture
 
