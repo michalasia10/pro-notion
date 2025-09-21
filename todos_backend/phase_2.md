@@ -19,12 +19,12 @@
 
 ### Step 1.5: Infrastructure Testing & Validation
 *   **Goal:** Test and validate that all infrastructure components work together properly.
-*   **Status:** 📝 To Do
+*   **Status:** ✅ COMPLETED
 
 | Task | Implementation Details | Status |
 | :--- | :--- | :--- |
-| **Test docker-compose setup** | Run `docker-compose up` and verify that all services start correctly: <br> - `api` service <br> - `event_worker` service <br> - `job_worker` service <br> - PostgreSQL and Redis health checks | `[ ]` |
-| **Validate worker connectivity** | Ensure workers can connect to: <br> - PostgreSQL database <br> - Redis instance <br> - Watermill event bus (GoChannel) | `[ ]` |
+| **Test docker-compose setup** | Run `docker-compose up` and verify that all services start correctly: <br> - `api` service <br> - `event_worker` service <br> - `job_worker` service <br> - PostgreSQL and Redis health checks | `[x]` |
+| **Validate worker connectivity** | Ensure workers can connect to: <br> - PostgreSQL database <br> - Redis instance <br> - Watermill event bus (GoChannel) | `[x]` |
 | **Test basic event flow** | Create a simple test to verify event publishing: <br> - Publish `NotionWebhookReceived` event from a test script <br> - Verify it's received by event_worker (add temporary logging) | `[ ]` |
 | **Test basic job queuing** | Create a simple test to verify job queuing: <br> - Enqueue a basic job using Asynq client <br> - Verify it's processed by job_worker (add temporary logging) | `[ ]` |
 

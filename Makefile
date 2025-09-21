@@ -67,7 +67,7 @@ dev-rebuild:
 	@docker compose -f src/docker-compose.yml up -d --build
 
 dev-down:
-	@docker compose -f src/docker-compose.yml down -v
+	@docker compose -f src/docker-compose.yml down 
 
 dev-logs:
 	@docker compose -f src/docker-compose.yml logs -f api
