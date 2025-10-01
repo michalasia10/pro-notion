@@ -85,7 +85,7 @@ var _ = BeforeSuite(func() {
 	migrator := database.Migrator()
 	Expect(migrator.AutoMigrate(&taskpostgres.TaskRecord{})).To(Succeed())
 
-	repo = taskpostgres.NewRepository()
+	repo = taskpostgres.NewRepository(db)
 })
 
 var _ = AfterSuite(func() {

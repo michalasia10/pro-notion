@@ -1,7 +1,10 @@
 package events
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"log"
 	"time"
 
@@ -9,8 +12,18 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/google/uuid"
 
+	projects "src/internal/modules/projects/domain"
+	shared "src/internal/modules/shared/domain"
 	sharedEvents "src/internal/modules/shared/domain/events"
 	sharedDTO "src/internal/modules/shared/interfaces/dto"
+	tasks "src/internal/modules/tasks/domain"
+)
+
+var (
+	pageUpdatedEvent     = "page.updated"
+	pageCreatedEvent     = "page.created"
+	pageDeletedEvent     = "page.deleted"
+	databaseUpdatedEvent = "database.updated"
 )
 
 // NotionWebhookPayload represents the structure of a webhook payload from Notion
@@ -22,137 +35,207 @@ type NotionWebhookPayload struct {
 
 // WebhookTriage processes raw Notion webhook events and publishes specific domain events
 type WebhookTriage struct {
-	publisher message.Publisher
-	logger    *log.Logger
+	publisher    message.Publisher
+	logger       *log.Logger
+	tasksRepo    tasks.Repository
+	projectsRepo projects.Repository
+	idGenerator  shared.IDGenerator
+	clock        func() time.Time
 }
 
 // NewWebhookTriage creates a new webhook triage processor
-func NewWebhookTriage(publisher message.Publisher, logger *log.Logger) *WebhookTriage {
+func NewWebhookTriage(
+	publisher message.Publisher,
+	logger *log.Logger,
+	tasksRepo tasks.Repository,
+	projectsRepo projects.Repository,
+	idGenerator shared.IDGenerator,
+	clock func() time.Time,
+) *WebhookTriage {
+	if idGenerator == nil {
+		idGenerator = shared.NewUUIDGenerator()
+	}
+	if clock == nil {
+		clock = time.Now
+	}
+
 	return &WebhookTriage{
-		publisher: publisher,
-		logger:    logger,
+		publisher:    publisher,
+		logger:       logger,
+		tasksRepo:    tasksRepo,
+		projectsRepo: projectsRepo,
+		idGenerator:  idGenerator,
+		clock:        clock,
 	}
 }
 
 // ProcessWebhook handles incoming webhook messages from Watermill
 func (wt *WebhookTriage) ProcessWebhook(msg *message.Message) error {
-	defer func() {
-		msg.Ack()
-	}()
+	defer msg.Ack()
 
-	// Parse the raw webhook payload
 	var webhookEvent sharedEvents.NotionWebhookReceived
 	if err := json.Unmarshal(msg.Payload, &webhookEvent); err != nil {
 		wt.logger.Printf("Failed to unmarshal webhook event: %v", err)
 		return err
 	}
 
-	// Parse the Notion webhook payload
 	var notionPayload NotionWebhookPayload
 	if err := json.Unmarshal(webhookEvent.Payload, &notionPayload); err != nil {
 		wt.logger.Printf("Failed to unmarshal Notion payload: %v", err)
 		return err
 	}
 
-	// Process based on webhook type
+	ctx := msg.Context()
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
 	switch notionPayload.Type {
-	case "page.updated":
-		return wt.handlePageUpdated(notionPayload)
-	case "page.created":
-		return wt.handlePageCreated(notionPayload)
-	case "page.deleted":
-		return wt.handlePageDeleted(notionPayload)
-	case "database.updated":
+	case pageUpdatedEvent:
+		return wt.handlePageUpdated(ctx, notionPayload)
+	case pageCreatedEvent:
+		return wt.handlePageCreated(ctx, notionPayload)
+	case pageDeletedEvent:
+		return wt.handlePageDeleted(ctx, notionPayload)
+	case databaseUpdatedEvent:
 		return wt.handleDatabaseUpdated(notionPayload)
 	default:
 		wt.logger.Printf("Unknown webhook type: %s", notionPayload.Type)
-		return nil // Ignore unknown types
+		return nil
 	}
 }
 
-// handlePageUpdated processes page update events
-func (wt *WebhookTriage) handlePageUpdated(payload NotionWebhookPayload) error {
+func (wt *WebhookTriage) logEvent(eventType, message string) {
+	wt.logger.Printf("%s| %s", eventType, message)
+}
+
+func (wt *WebhookTriage) handlePageUpdated(ctx context.Context, payload NotionWebhookPayload) error {
 	pageID, ok := payload.Data["id"].(string)
 	if !ok {
-		wt.logger.Printf("Missing page ID in page.updated event")
+		wt.logEvent(pageUpdatedEvent, "Missing page ID")
 		return nil
 	}
 
 	databaseID, ok := payload.Data["database_id"].(string)
 	if !ok {
-		wt.logger.Printf("Missing database ID in page.updated event")
+		wt.logEvent(pageUpdatedEvent, "Missing database ID")
 		return nil
 	}
 
-	// For now, assume all page updates in databases are task updates
-	// TODO: Add more sophisticated logic to determine if it's a task vs other page types
-	taskID := uuid.New() // Generate a task ID - in real implementation this would be looked up from database
+	taskID, created, err := wt.resolveTaskID(ctx, databaseID, pageID, true)
+	if err != nil {
+		wt.logEvent(pageUpdatedEvent, fmt.Sprintf("Failed to resolve task for (db=%s page=%s): %v", databaseID, pageID, err))
+		return err
+	}
+
+	if created {
+		wt.logEvent(pageUpdatedEvent, fmt.Sprintf("Created new task mapping db=%s page=%s task=%s", databaseID, pageID, taskID))
+	}
 
 	event := sharedEvents.NewTaskPropertiesUpdated(taskID, databaseID, pageID, payload.Data)
-
 	return wt.publishTaskPropertiesUpdated(event)
 }
 
-// handlePageCreated processes page creation events
-func (wt *WebhookTriage) handlePageCreated(payload NotionWebhookPayload) error {
+func (wt *WebhookTriage) handlePageCreated(ctx context.Context, payload NotionWebhookPayload) error {
 	pageID, ok := payload.Data["id"].(string)
 	if !ok {
-		wt.logger.Printf("Missing page ID in page.created event")
+		wt.logEvent(pageCreatedEvent, "Missing page ID")
 		return nil
 	}
 
 	databaseID, ok := payload.Data["database_id"].(string)
 	if !ok {
-		wt.logger.Printf("Missing database ID in page.created event")
+		wt.logEvent(pageCreatedEvent, "Missing database ID")
 		return nil
 	}
 
-	// For now, assume all new pages in databases are tasks
-	taskID := uuid.New()
+	taskID, created, err := wt.resolveTaskID(ctx, databaseID, pageID, true)
+	if err != nil {
+		wt.logEvent(pageCreatedEvent, fmt.Sprintf("Failed to resolve task for (db=%s page=%s): %v", databaseID, pageID, err))
+		return err
+	}
+
+	if created {
+		wt.logEvent(pageCreatedEvent, fmt.Sprintf("Created new task mapping db=%s page=%s task=%s", databaseID, pageID, taskID))
+	}
 
 	event := sharedEvents.NewTaskCreated(taskID, databaseID, pageID, payload.Data)
-
 	return wt.publishTaskCreated(event)
 }
 
-// handlePageDeleted processes page deletion events
-func (wt *WebhookTriage) handlePageDeleted(payload NotionWebhookPayload) error {
+func (wt *WebhookTriage) handlePageDeleted(ctx context.Context, payload NotionWebhookPayload) error {
 	pageID, ok := payload.Data["id"].(string)
 	if !ok {
-		wt.logger.Printf("Missing page ID in page.deleted event")
+		wt.logEvent(pageDeletedEvent, "Missing page ID")
 		return nil
 	}
 
 	databaseID, ok := payload.Data["database_id"].(string)
 	if !ok {
-		wt.logger.Printf("Missing database ID in page.deleted event")
+		wt.logEvent(pageDeletedEvent, "Missing database ID")
 		return nil
 	}
 
-	// For now, assume all deleted pages in databases are tasks
-	taskID := uuid.New()
+	taskID, _, err := wt.resolveTaskID(ctx, databaseID, pageID, false)
+	if err != nil {
+		if errors.Is(err, tasks.ErrTaskNotFound) {
+			wt.logEvent(pageDeletedEvent, fmt.Sprintf("No matching task found for deletion (db=%s page=%s)", databaseID, pageID))
+			return nil
+		}
+		wt.logEvent(pageDeletedEvent, fmt.Sprintf("Failed to resolve task for (db=%s page=%s): %v", databaseID, pageID, err))
+		return err
+	}
 
 	event := sharedEvents.NewTaskDeleted(taskID, databaseID, pageID)
-
 	return wt.publishTaskDeleted(event)
 }
 
-// handleDatabaseUpdated processes database update events
 func (wt *WebhookTriage) handleDatabaseUpdated(payload NotionWebhookPayload) error {
 	databaseID, ok := payload.Data["id"].(string)
 	if !ok {
-		wt.logger.Printf("Missing database ID in database.updated event")
+		wt.logEvent(databaseUpdatedEvent, "Missing database ID")
 		return nil
 	}
 
 	pageID, ok := payload.Data["page_id"].(string)
 	if !ok {
-		pageID = "" // Page ID might not be present for database updates
+		pageID = ""
 	}
 
 	event := sharedEvents.NewDatabasePropertiesUpdated(databaseID, pageID, payload.Data)
-
 	return wt.publishDatabasePropertiesUpdated(event)
+}
+
+func (wt *WebhookTriage) resolveTaskID(ctx context.Context, databaseID, pageID string, createIfMissing bool) (uuid.UUID, bool, error) {
+	task, err := wt.tasksRepo.FindByNotionIDs(ctx, databaseID, pageID)
+	if err == nil {
+		return task.ID, false, nil
+	}
+
+	if !errors.Is(err, tasks.ErrTaskNotFound) {
+		return uuid.Nil, false, err
+	}
+
+	if !createIfMissing {
+		return uuid.Nil, false, tasks.ErrTaskNotFound
+	}
+
+	project, err := wt.projectsRepo.FindByNotionDatabaseID(ctx, databaseID)
+	if err != nil {
+		return uuid.Nil, false, err
+	}
+
+	now := wt.clock()
+	newTask, err := tasks.NewTask(project.ID, databaseID, pageID, now, wt.idGenerator)
+	if err != nil {
+		return uuid.Nil, false, err
+	}
+
+	if err := wt.tasksRepo.Upsert(ctx, newTask); err != nil {
+		return uuid.Nil, false, err
+	}
+
+	return newTask.ID, true, nil
 }
 
 // publishTaskPropertiesUpdated publishes TaskPropertiesUpdated event
@@ -183,18 +266,18 @@ func (wt *WebhookTriage) publishDatabasePropertiesUpdated(event *sharedEvents.Da
 func (wt *WebhookTriage) publishDTO(topic string, dto interface{}) error {
 	eventBytes, err := json.Marshal(dto)
 	if err != nil {
-		wt.logger.Printf("Failed to marshal event DTO: %v", err)
+		wt.logEvent(topic, fmt.Sprintf("Failed to marshal event DTO: %v", err))
 		return err
 	}
 
 	msg := message.NewMessage(watermill.NewUUID(), eventBytes)
 
 	if err := wt.publisher.Publish(topic, msg); err != nil {
-		wt.logger.Printf("Failed to publish event to topic %s: %v", topic, err)
+		wt.logEvent(topic, fmt.Sprintf("Failed to publish event: %v", err))
 		return err
 	}
 
-	wt.logger.Printf("Successfully published event to topic: %s", topic)
+	wt.logEvent(topic, "Successfully published event")
 	return nil
 }
 

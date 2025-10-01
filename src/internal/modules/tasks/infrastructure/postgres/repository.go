@@ -18,8 +18,11 @@ type Repository struct {
 }
 
 // NewRepository creates a tasks repository backed by the shared GORM instance.
-func NewRepository() *Repository {
-	return &Repository{db: database.GormDB()}
+func NewRepository(db *gorm.DB) *Repository {
+	if db == nil {
+		db = database.GormDB()
+	}
+	return &Repository{db: db}
 }
 
 func (r *Repository) Save(ctx context.Context, task *taskdomain.Task) error {

@@ -7,7 +7,11 @@ import (
 	"syscall"
 
 	"src/internal/config"
+	"src/internal/database"
+	projectsPostgres "src/internal/modules/projects/infrastructure/postgres"
+	shared "src/internal/modules/shared/domain"
 	sharedEvents "src/internal/modules/shared/domain/events"
+	tasksPostgres "src/internal/modules/tasks/infrastructure/postgres"
 	webhookEvents "src/internal/modules/webhooks/infrastructure/events"
 	"src/internal/pkg/eventbus"
 
@@ -28,9 +32,21 @@ func main() {
 		log.Fatalf("failed to create router: %v", err)
 	}
 
-	// Register event subscribers
+	db := database.GormDB()
+	tasksRepo := tasksPostgres.NewRepository(db)
+	projectsRepo := projectsPostgres.NewProjectRepository(db)
+	idGenerator := shared.NewUUIDGenerator()
+
 	triageLogger := log.New(log.Writer(), "webhook_triage: ", log.LstdFlags|log.Lshortfile)
-	webhookTriage := webhookEvents.NewWebhookTriage(publisher, triageLogger)
+	webhookTriage := webhookEvents.NewWebhookTriage(
+		publisher,
+		triageLogger,
+		tasksRepo,
+		projectsRepo,
+		idGenerator,
+		nil,
+	)
+
 	router.AddConsumerHandler(
 		"webhook_triage",
 		sharedEvents.NotionWebhookReceivedTopic,
