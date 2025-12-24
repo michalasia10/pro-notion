@@ -4,16 +4,16 @@ import (
 	"context"
 	"log"
 	"os/signal"
-	"syscall"
-
 	"src/internal/config"
 	"src/internal/database"
+	"src/internal/pkg/eventbus"
+	"syscall"
+
 	projectsPostgres "src/internal/modules/projects/infrastructure/postgres"
 	shared "src/internal/modules/shared/domain"
 	sharedEvents "src/internal/modules/shared/domain/events"
 	tasksPostgres "src/internal/modules/tasks/infrastructure/postgres"
 	webhookEvents "src/internal/modules/webhooks/infrastructure/events"
-	"src/internal/pkg/eventbus"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
