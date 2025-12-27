@@ -22,16 +22,21 @@ func main() {
 
 	mux := asynq.NewServeMux()
 
-	// TODO: Register task handlers here
-	// mux.HandleFunc("task:type", handlerFunc)
+	// Register task handlers (stub handler keeps server valid; replace with real handlers)
+	mux.HandleFunc("tasks:no-op", func(ctx context.Context, t *asynq.Task) error {
+		return nil
+	})
 
 	server := taskqueue.NewServer(redisOpt, cfg.Async.Concurrency, cfg.Async.Queues)
 
 	log.Println("Starting job worker...")
 
-	if err := server.Start(mux); err != nil {
-		log.Fatalf("server error: %v", err)
-	}
+	// Start server in background so we can handle signals
+	go func() {
+		if err := server.Start(mux); err != nil {
+			log.Fatalf("server error: %v", err)
+		}
+	}()
 
 	// Create context that listens for the interrupt signal from the OS
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)

@@ -6,6 +6,8 @@ import (
 	"log"
 	"net/http"
 	"os/signal"
+	"os"
+	"strings"
 	"syscall"
 	"time"
 
@@ -45,13 +47,18 @@ func main() {
 	// Load configuration once at startup
 	config.Load()
 
-	// Initialize DB and run migrations before starting HTTP server
+	// Initialize DB (migrations are optional via RUN_MIGRATIONS=true)
 	_ = database.New()
-	if err := goose.SetDialect("postgres"); err != nil {
-		panic(fmt.Sprintf("goose dialect error: %v", err))
-	}
-	if err := goose.Up(database.SQLDB(), "migrations"); err != nil {
-		panic(fmt.Sprintf("failed to run migrations: %v", err))
+	if strings.ToLower(os.Getenv("RUN_MIGRATIONS")) == "true" {
+		if err := goose.SetDialect("postgres"); err != nil {
+			panic(fmt.Sprintf("goose dialect error: %v", err))
+		}
+		if err := goose.Up(database.SQLDB(), "migrations"); err != nil {
+			panic(fmt.Sprintf("failed to run migrations: %v", err))
+		}
+		log.Println("migrations applied")
+	} else {
+		log.Println("skipping migrations; set RUN_MIGRATIONS=true to apply on startup")
 	}
 
 	server := server.NewServer()
