@@ -6,6 +6,7 @@ import (
 	"gorm.io/gorm"
 
 	"src/internal/modules/users/domain"
+	"src/internal/pkg/txctx"
 )
 
 // UserRepository implements domain.UserRepository using PostgreSQL/GORM
@@ -18,11 +19,18 @@ func NewUserRepository(db *gorm.DB) *UserRepository {
 	return &UserRepository{db: db}
 }
 
+func (r *UserRepository) session(ctx context.Context) *gorm.DB {
+	if tx := txctx.FromContext(ctx); tx != nil {
+		return tx.WithContext(ctx)
+	}
+	return r.db.WithContext(ctx)
+}
+
 // Create creates a new user in the database
 func (r *UserRepository) Create(ctx context.Context, user domain.User) (domain.User, error) {
 	record := toUserRecord(user)
 
-	if err := r.db.WithContext(ctx).Create(&record).Error; err != nil {
+	if err := r.session(ctx).Create(&record).Error; err != nil {
 		return domain.User{}, err
 	}
 
@@ -33,7 +41,7 @@ func (r *UserRepository) Create(ctx context.Context, user domain.User) (domain.U
 func (r *UserRepository) GetByID(ctx context.Context, id string) (domain.User, error) {
 	var record UserRecord
 
-	err := r.db.WithContext(ctx).Where("public_id = ?", id).First(&record).Error
+	err := r.session(ctx).Where("public_id = ?", id).First(&record).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return domain.User{}, domain.ErrUserNotFound
@@ -48,7 +56,7 @@ func (r *UserRepository) GetByID(ctx context.Context, id string) (domain.User, e
 func (r *UserRepository) GetByEmail(ctx context.Context, email string) (domain.User, error) {
 	var record UserRecord
 
-	err := r.db.WithContext(ctx).Where("email = ?", email).First(&record).Error
+	err := r.session(ctx).Where("email = ?", email).First(&record).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return domain.User{}, domain.ErrUserNotFound
@@ -63,7 +71,7 @@ func (r *UserRepository) GetByEmail(ctx context.Context, email string) (domain.U
 func (r *UserRepository) Update(ctx context.Context, user domain.User) (domain.User, error) {
 	record := toUserRecord(user)
 
-	err := r.db.WithContext(ctx).Save(&record).Error
+	err := r.session(ctx).Save(&record).Error
 	if err != nil {
 		return domain.User{}, err
 	}
@@ -73,7 +81,7 @@ func (r *UserRepository) Update(ctx context.Context, user domain.User) (domain.U
 
 // Delete removes a user from the database
 func (r *UserRepository) Delete(ctx context.Context, id string) error {
-	result := r.db.WithContext(ctx).Where("public_id = ?", id).Delete(&UserRecord{})
+	result := r.session(ctx).Where("public_id = ?", id).Delete(&UserRecord{})
 
 	if result.Error != nil {
 		return result.Error
@@ -90,7 +98,7 @@ func (r *UserRepository) Delete(ctx context.Context, id string) error {
 func (r *UserRepository) List(ctx context.Context, offset, limit int) ([]domain.User, error) {
 	var records []UserRecord
 
-	err := r.db.WithContext(ctx).
+	err := r.session(ctx).
 		Offset(offset).
 		Limit(limit).
 		Order("created_at DESC").

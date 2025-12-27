@@ -6,13 +6,15 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/redis/go-redis/v9"
 
 	"src/internal/config"
 	"src/internal/database"
-	"src/internal/pkg/eventbus"
+	projectdomain "src/internal/modules/projects/domain"
+	userdomain "src/internal/modules/users/domain"
+	shared "src/internal/modules/shared/domain"
+	"src/internal/pkg/notion"
 )
 
 type Server struct {
@@ -20,34 +22,40 @@ type Server struct {
 	db          database.Service
 	redisClient *redis.Client
 	publisher   message.Publisher
+	txMgr       shared.TransactionManager
+	projectRepo projectdomain.Repository
+	userRepo    userdomain.UserRepository
+	idGen       shared.IDGenerator
+	clock       shared.Clock
+	notion      *notion.Service
 }
 
-func NewServer() *http.Server {
+type Dependencies struct {
+	DB          database.Service
+	Redis       *redis.Client
+	Publisher   message.Publisher
+	TxMgr       shared.TransactionManager
+	ProjectRepo projectdomain.Repository
+	UserRepo    userdomain.UserRepository
+	IDGen       shared.IDGenerator
+	Clock       shared.Clock
+	Notion      *notion.Service
+}
+
+func NewServer(deps Dependencies) *http.Server {
 	cfg := config.Get()
-
-	redisClient := redis.NewClient(&redis.Options{
-		Addr:     cfg.RedisURL(),
-		Password: cfg.Redis.Password,
-		DB:       0,
-	})
-
-	// Initialize Watermill publisher
-	logger := watermill.NewStdLogger(false, false)
-	eventBusCfg := eventbus.Config{
-		Transport:     eventbus.Transport(cfg.EventBus.Transport),
-		RedisOptions:  redis.Options{Addr: cfg.RedisURL(), Password: cfg.Redis.Password},
-		ConsumerGroup: cfg.EventBus.ConsumerGroup,
-	}
-	pubSub, err := eventbus.NewPubSub(logger, eventBusCfg)
-	if err != nil {
-		log.Fatalf("Failed to create Watermill publisher: %v", err)
-	}
 
 	serverInstance := &Server{
 		port:        cfg.Port,
-		redisClient: redisClient,
-		db:          database.New(),
-		publisher:   pubSub.Publisher,
+		redisClient: deps.Redis,
+		db:          deps.DB,
+		publisher:   deps.Publisher,
+		txMgr:       deps.TxMgr,
+		projectRepo: deps.ProjectRepo,
+		userRepo:    deps.UserRepo,
+		idGen:       deps.IDGen,
+		clock:       deps.Clock,
+		notion:      deps.Notion,
 	}
 
 	// Declare Server config

@@ -38,13 +38,13 @@ func (s *Server) RegisterRoutes() http.Handler {
 
 	// API v1 feature routers
 	r.Route("/api/v1", func(r chi.Router) {
-		r.Mount("/users", usersHTTP.NewRouter())
-		r.Mount("/auth", usersHTTP.NewAuthRouter())
+		r.Mount("/users", usersHTTP.NewRouter(s.userRepo, s.txMgr, s.idGen, s.clock))
+		r.Mount("/auth", usersHTTP.NewAuthRouter(s.userRepo, s.txMgr, s.idGen, s.clock, s.notion))
 
 		// Protected routes requiring authentication
 		r.Route("/projects", func(r chi.Router) {
 			r.Use(authmw.JWTAuthMiddleware)
-			r.Mount("/", projectsHTTP.NewRouter())
+			r.Mount("/", projectsHTTP.NewRouter(s.projectRepo, s.txMgr, s.idGen, s.clock))
 		})
 
 		// Webhook routes with signature validation

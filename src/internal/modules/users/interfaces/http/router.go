@@ -5,23 +5,15 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"src/internal/database"
 	shared "src/internal/modules/shared/domain"
 	"src/internal/modules/users/application"
 	"src/internal/modules/users/domain"
-	"src/internal/modules/users/infrastructure/postgres"
 	"src/internal/pkg/httpx"
 )
 
 // NewRouter creates a new HTTP router for the users module
-func NewRouter() chi.Router {
+func NewRouter(repo domain.UserRepository, txMgr shared.TransactionManager, idGen shared.IDGenerator, clock shared.Clock) chi.Router {
 	r := chi.NewRouter()
-
-	// Initialize dependencies
-	repo := postgres.NewUserRepository(database.GormDB())
-	idGen := shared.NewUUIDGenerator()
-	clock := shared.NewSystemClock()
-	txMgr := shared.NewNoopTransactionManager()
 
 	// Initialize use cases
 	createUserUC := application.NewCreateUserUseCase(repo, idGen, clock, txMgr)

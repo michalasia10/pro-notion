@@ -80,3 +80,14 @@ func (s *service) Close() error {
 	log.Printf("Disconnected from database")
 	return s.db.Close()
 }
+
+// Close shuts down the shared database instance if initialized.
+func Close() {
+	if dbInstance == nil || dbInstance.db == nil {
+		return
+	}
+	if err := dbInstance.Close(); err != nil {
+		log.Printf("error closing database: %v", err)
+	}
+	dbInstance = nil
+}

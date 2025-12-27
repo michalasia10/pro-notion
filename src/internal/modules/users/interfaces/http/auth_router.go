@@ -6,33 +6,24 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"src/internal/config"
-	"src/internal/database"
 	shared "src/internal/modules/shared/domain"
 	"src/internal/modules/users/application"
 	"src/internal/modules/users/domain"
-	"src/internal/modules/users/infrastructure/postgres"
 	"src/internal/pkg/httpx"
 	"src/internal/pkg/notion"
 )
 
 // NewAuthRouter creates a new HTTP router for authentication endpoints
-func NewAuthRouter() chi.Router {
+func NewAuthRouter(
+	repo domain.UserRepository,
+	txMgr shared.TransactionManager,
+	idGen shared.IDGenerator,
+	clock shared.Clock,
+	notionService *notion.Service,
+) chi.Router {
 	r := chi.NewRouter()
 
-	// Initialize dependencies
 	cfg := config.Get()
-	repo := postgres.NewUserRepository(database.GormDB())
-	idGen := shared.NewUUIDGenerator()
-	clock := shared.NewSystemClock()
-	txMgr := shared.NewNoopTransactionManager()
-
-	// Initialize Notion service
-	notionService := notion.NewService(notion.ServiceConfig{
-		ClientID:     cfg.Notion.ClientID,
-		ClientSecret: cfg.Notion.ClientSecret,
-		RedirectURI:  cfg.Notion.RedirectURL,
-		APIVersion:   cfg.Notion.APIVersion,
-	})
 
 	// Initialize use cases
 	getAuthURLUC := application.NewGetAuthorizationURLUseCase(notionService)

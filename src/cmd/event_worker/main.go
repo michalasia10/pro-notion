@@ -41,6 +41,7 @@ func main() {
 			_ = pubSub.Close()
 		}
 	}()
+	defer database.Close()
 
 	router, err := eventbus.NewRouter(logger)
 	if err != nil {

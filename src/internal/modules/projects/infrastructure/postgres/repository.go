@@ -6,6 +6,7 @@ import (
 	"gorm.io/gorm"
 
 	"src/internal/modules/projects/domain"
+	"src/internal/pkg/txctx"
 
 	"github.com/google/uuid"
 )
@@ -20,11 +21,18 @@ func NewProjectRepository(db *gorm.DB) *ProjectRepository {
 	return &ProjectRepository{db: db}
 }
 
+func (r *ProjectRepository) session(ctx context.Context) *gorm.DB {
+	if tx := txctx.FromContext(ctx); tx != nil {
+		return tx.WithContext(ctx)
+	}
+	return r.db.WithContext(ctx)
+}
+
 // Save persists a project
 func (r *ProjectRepository) Save(ctx context.Context, project *domain.Project) error {
 	record := toProjectRecord(*project)
 
-	if err := r.db.WithContext(ctx).Create(&record).Error; err != nil {
+	if err := r.session(ctx).Create(&record).Error; err != nil {
 		return err
 	}
 
@@ -39,7 +47,7 @@ func (r *ProjectRepository) Save(ctx context.Context, project *domain.Project) e
 func (r *ProjectRepository) FindByID(ctx context.Context, id uuid.UUID) (*domain.Project, error) {
 	var record ProjectRecord
 
-	err := r.db.WithContext(ctx).Where("id = ?", id).First(&record).Error
+	err := r.session(ctx).Where("id = ?", id).First(&record).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, domain.ErrProjectNotFound
@@ -55,7 +63,7 @@ func (r *ProjectRepository) FindByID(ctx context.Context, id uuid.UUID) (*domain
 func (r *ProjectRepository) FindByPublicID(ctx context.Context, publicID string) (*domain.Project, error) {
 	var record ProjectRecord
 
-	err := r.db.WithContext(ctx).Where("public_id = ?", publicID).First(&record).Error
+	err := r.session(ctx).Where("public_id = ?", publicID).First(&record).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, domain.ErrProjectNotFound
@@ -71,7 +79,7 @@ func (r *ProjectRepository) FindByPublicID(ctx context.Context, publicID string)
 func (r *ProjectRepository) FindByUserID(ctx context.Context, userID uuid.UUID) ([]*domain.Project, error) {
 	var records []ProjectRecord
 
-	err := r.db.WithContext(ctx).
+	err := r.session(ctx).
 		Where("user_id = ?", userID).
 		Order("created_at DESC").
 		Find(&records).Error
@@ -93,7 +101,7 @@ func (r *ProjectRepository) FindByUserID(ctx context.Context, userID uuid.UUID) 
 func (r *ProjectRepository) FindByNotionDatabaseID(ctx context.Context, notionDatabaseID string) (*domain.Project, error) {
 	var record ProjectRecord
 
-	err := r.db.WithContext(ctx).Where("notion_database_id = ?", notionDatabaseID).First(&record).Error
+	err := r.session(ctx).Where("notion_database_id = ?", notionDatabaseID).First(&record).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, domain.ErrProjectNotFound
@@ -109,7 +117,7 @@ func (r *ProjectRepository) FindByNotionDatabaseID(ctx context.Context, notionDa
 func (r *ProjectRepository) Update(ctx context.Context, project *domain.Project) error {
 	record := toProjectRecord(*project)
 
-	err := r.db.WithContext(ctx).Save(&record).Error
+	err := r.session(ctx).Save(&record).Error
 	if err != nil {
 		return err
 	}
@@ -122,7 +130,7 @@ func (r *ProjectRepository) Update(ctx context.Context, project *domain.Project)
 
 // Delete removes a project
 func (r *ProjectRepository) Delete(ctx context.Context, id uuid.UUID) error {
-	result := r.db.WithContext(ctx).Where("id = ?", id).Delete(&ProjectRecord{})
+	result := r.session(ctx).Where("id = ?", id).Delete(&ProjectRecord{})
 
 	if result.Error != nil {
 		return result.Error
