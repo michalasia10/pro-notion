@@ -4,10 +4,11 @@ import (
 	"context"
 	"log"
 	"os/signal"
+	"syscall"
+
 	"src/internal/config"
 	"src/internal/database"
 	"src/internal/pkg/eventbus"
-	"syscall"
 
 	projectsPostgres "src/internal/modules/projects/infrastructure/postgres"
 	shared "src/internal/modules/shared/domain"
@@ -16,16 +17,30 @@ import (
 	webhookEvents "src/internal/modules/webhooks/infrastructure/events"
 
 	"github.com/ThreeDotsLabs/watermill"
-	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/redis/go-redis/v9"
 )
 
 func main() {
 	config.Load()
 	logger := watermill.NewStdLogger(false, false)
-	publisher, err := eventbus.NewPublisher(logger)
+	cfg := config.Get()
+	eventBusCfg := eventbus.Config{
+		Transport:       eventbus.Transport(cfg.EventBus.Transport),
+		RedisOptions:    redis.Options{Addr: cfg.RedisURL(), Password: cfg.Redis.Password},
+		ConsumerGroup:   cfg.EventBus.ConsumerGroup,
+		ConsumerTimeout: cfg.EventBus.GetTimeoutInterval(),
+		ClaimInterval:   cfg.EventBus.GetClaimInterval(),
+	}
+
+	pubSub, err := eventbus.NewPubSub(logger, eventBusCfg)
 	if err != nil {
 		log.Fatalf("failed to create publisher: %v", err)
 	}
+	defer func() {
+		if pubSub.Close != nil {
+			_ = pubSub.Close()
+		}
+	}()
 
 	router, err := eventbus.NewRouter(logger)
 	if err != nil {
@@ -39,7 +54,7 @@ func main() {
 
 	triageLogger := log.New(log.Writer(), "webhook_triage: ", log.LstdFlags|log.Lshortfile)
 	webhookTriage := webhookEvents.NewWebhookTriage(
-		publisher,
+		pubSub.Publisher,
 		triageLogger,
 		tasksRepo,
 		projectsRepo,
@@ -50,7 +65,7 @@ func main() {
 	router.AddConsumerHandler(
 		"webhook_triage",
 		sharedEvents.NotionWebhookReceivedTopic,
-		publisher.(message.Subscriber),
+		pubSub.Subscriber,
 		webhookTriage.Handler(),
 	)
 

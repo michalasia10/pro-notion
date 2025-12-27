@@ -100,8 +100,7 @@ var _ = Describe("Infrastructure", func() {
 		// Create logger
 		logger := watermill.NewStdLogger(false, false)
 
-		// Create publisher
-		publisher, err := eventbus.NewPublisher(logger)
+		pubSub, err := eventbus.NewPubSub(logger, eventbus.Config{})
 		Expect(err).ToNot(HaveOccurred())
 
 		// Create router
@@ -121,7 +120,7 @@ var _ = Describe("Infrastructure", func() {
 		router.AddNoPublisherHandler(
 			"test_handler",
 			events.NotionWebhookReceivedTopic,
-			publisher.(message.Subscriber), // GoChannel implements both Publisher and Subscriber
+			pubSub.Subscriber,
 			handlerFunc,
 		)
 
@@ -141,7 +140,7 @@ var _ = Describe("Infrastructure", func() {
 		testPayload := []byte(`{"test": "data"}`)
 		msg := message.NewMessage(watermill.NewUUID(), testPayload)
 
-		err = publisher.Publish(events.NotionWebhookReceivedTopic, msg)
+		err = pubSub.Publisher.Publish(events.NotionWebhookReceivedTopic, msg)
 		Expect(err).ToNot(HaveOccurred())
 
 		// Wait for event to be consumed

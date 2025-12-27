@@ -16,11 +16,7 @@ import (
 
 func testConfig() *config.Config {
 	return &config.Config{
-		JWT: struct {
-			Secret string
-		}{
-			Secret: "test-secret-key-for-testing",
-		},
+		JWT: config.JWT{Secret: "test-secret-key-for-testing"},
 	}
 }
 
@@ -123,13 +119,7 @@ var _ = Describe("JWT Authentication Middleware", func() {
 
 			It("should return 401 Unauthorized for JWT signed with wrong key", func() {
 				// Create token with different secret
-				wrongCfg := &config.Config{
-					JWT: struct {
-						Secret string
-					}{
-						Secret: "different-secret",
-					},
-				}
+				wrongCfg := &config.Config{JWT: config.JWT{Secret: "different-secret"}}
 				config.SetForTests(wrongCfg)
 				wrongToken, _ := middleware.GenerateJWTToken(userID)
 				config.SetForTests(testCfg) // Reset to test config

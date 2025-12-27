@@ -33,7 +33,12 @@ func NewServer() *http.Server {
 
 	// Initialize Watermill publisher
 	logger := watermill.NewStdLogger(false, false)
-	publisher, err := eventbus.NewPublisher(logger)
+	eventBusCfg := eventbus.Config{
+		Transport:     eventbus.Transport(cfg.EventBus.Transport),
+		RedisOptions:  redis.Options{Addr: cfg.RedisURL(), Password: cfg.Redis.Password},
+		ConsumerGroup: cfg.EventBus.ConsumerGroup,
+	}
+	pubSub, err := eventbus.NewPubSub(logger, eventBusCfg)
 	if err != nil {
 		log.Fatalf("Failed to create Watermill publisher: %v", err)
 	}
@@ -42,7 +47,7 @@ func NewServer() *http.Server {
 		port:        cfg.Port,
 		redisClient: redisClient,
 		db:          database.New(),
-		publisher:   publisher,
+		publisher:   pubSub.Publisher,
 	}
 
 	// Declare Server config

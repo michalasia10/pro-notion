@@ -1,59 +1,90 @@
 package config
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
-	"os"
-	"strconv"
+	"time"
 
+	"github.com/caarlos0/env/v11"
 	_ "github.com/joho/godotenv/autoload"
 )
 
+type Database struct {
+	Host     string `env:"HOST" envDefault:"localhost"`
+	Port     string `env:"PORT" envDefault:"5432"`
+	Username string `env:"USERNAME" envDefault:"postgres"`
+	Password string `env:"PASSWORD" envDefault:""`
+	Database string `env:"DATABASE" envDefault:"pro_notion"`
+	Schema   string `env:"SCHEMA" envDefault:"public"`
+}
+
+func (d *Database) DatabaseURL() string {
+	return fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable&search_path=%s",
+		d.Username,
+		d.Password,
+		d.Host,
+		d.Port,
+		d.Database,
+		d.Schema,
+	)
+}
+
+type Redis struct {
+	Host     string `env:"HOST" envDefault:"localhost"`
+	Port     string `env:"PORT" envDefault:"6379"`
+	Password string `env:"PASSWORD" envDefault:""`
+}
+
+func (r *Redis) URL() string {
+	return fmt.Sprintf("%s:%s", r.Host, r.Port)
+}
+
+type Notion struct {
+	ClientID      string `env:"CLIENT_ID" envDefault:""`
+	ClientSecret  string `env:"CLIENT_SECRET" envDefault:""`
+	RedirectURL   string `env:"REDIRECT_URL" envDefault:"http://localhost:8080/api/v1/auth/notion/callback"`
+	APIVersion    string `env:"API_VERSION" envDefault:"2022-06-28"`
+	WebhookSecret string `env:"WEBHOOK_SECRET" envDefault:""`
+}
+
+type JWT struct {
+	Secret string `env:"SECRET" envDefault:"your-secret-key"`
+}
+
+type EventBus struct {
+	Transport            string `env:"TRANSPORT"`
+	ConsumerGroup        string `env:"CONSUMER_GROUP" envDefault:"worker_group"`
+	TimeoutIntervalMin   int    `env:"TIMEOUT_INTERNAL_MINUTE" envDefault:"5"`
+	ClaimIntervalSeconds int    `env:"CLAIM_INTERAL_SECONDS" envDefault:"5"`
+}
+
+func (eb *EventBus) GetTimeoutInterval() time.Duration {
+	return time.Duration(eb.TimeoutIntervalMin) * time.Minute
+}
+
+func (eb *EventBus) GetClaimInterval() time.Duration {
+	return time.Duration(eb.ClaimIntervalSeconds) * time.Second
+}
+
+type Async struct {
+	Concurrency int    `env:"CONCURRENCY" envDefault:"10"`
+	Queues      IntMap `env:"QUEUES" envDefault:"{\"critical\":6,\"default\":3}"`
+}
+
 // Config holds all configuration for the application
 type Config struct {
-	// Server configuration
-	Port int
+	Port int `env:"PORT" envDefault:"8080"`
 
-	// Database configuration
-	Database struct {
-		Host     string
-		Port     string
-		Username string
-		Password string
-		Database string
-		Schema   string
-	}
-
-	// Redis configuration
-	Redis struct {
-		Host     string
-		Port     string
-		Password string
-	}
-
-	// Notion API configuration
-	Notion struct {
-		ClientID      string
-		ClientSecret  string
-		RedirectURL   string
-		APIVersion    string
-		WebhookSecret string
-	}
-
-	// JWT configuration
-	JWT struct {
-		Secret string
-	}
-	Async struct {
-		Concurrency int
-		Queues      map[string]int
-	}
+	Database Database `envPrefix:"BLUEPRINT_DB_"`
+	Redis    Redis    `envPrefix:"REDIS_"`
+	Notion   Notion   `envPrefix:"NOTION_"`
+	JWT      JWT      `envPrefix:"JWT_"`
+	EventBus EventBus `envPrefix:"EVENT_BUS_"`
+	Async    Async    `envPrefix:"ASYNC_"`
 }
 
 var cfg *Config
 
-// Load initializes the configuration from environment variables
 func Load() *Config {
 	if cfg != nil {
 		return cfg
@@ -61,59 +92,18 @@ func Load() *Config {
 
 	cfg = &Config{}
 
-	// Server
-	port, err := strconv.Atoi(getEnv("PORT", "8080"))
-	if err != nil {
-		log.Fatalf("Invalid PORT value: %v", err)
+	if err := env.Parse(cfg); err != nil {
+		log.Fatalf("Invalid config: %v", err)
 	}
-	cfg.Port = port
-
-	// Database
-	cfg.Database.Host = getEnv("BLUEPRINT_DB_HOST", "localhost")
-	cfg.Database.Port = getEnv("BLUEPRINT_DB_PORT", "5432")
-	cfg.Database.Username = getEnv("BLUEPRINT_DB_USERNAME", "postgres")
-	cfg.Database.Password = getEnv("BLUEPRINT_DB_PASSWORD", "")
-	cfg.Database.Database = getEnv("BLUEPRINT_DB_DATABASE", "pro_notion")
-	cfg.Database.Schema = getEnv("BLUEPRINT_DB_SCHEMA", "public")
-
-	// Redis
-	cfg.Redis.Host = getEnv("REDIS_HOST", "localhost")
-	cfg.Redis.Port = getEnv("REDIS_PORT", "6379")
-	cfg.Redis.Password = getEnv("REDIS_PASSWORD", "")
-
-	// Notion
-	cfg.Notion.ClientID = getEnv("NOTION_CLIENT_ID", "")
-	cfg.Notion.ClientSecret = getEnv("NOTION_CLIENT_SECRET", "")
-	cfg.Notion.RedirectURL = getEnv("NOTION_REDIRECT_URL", "http://localhost:8080/api/v1/auth/notion/callback")
-	cfg.Notion.APIVersion = getEnv("NOTION_API_VERSION", "2022-06-28")
-	cfg.Notion.WebhookSecret = getEnv("NOTION_WEBHOOK_SECRET", "")
-
-	// JWT
-	cfg.JWT.Secret = getEnv("JWT_SECRET", "your-secret-key")
 
 	// Validate required config
 	if cfg.Notion.ClientID == "" || cfg.Notion.ClientSecret == "" {
 		log.Println("Warning: Notion Client ID and Secret not configured. OAuth flow will not work.")
 	}
 
-	// Async
-	asyncConcurrency, err := strconv.Atoi(getEnv("ASYNC_CONCURRENCY", "10"))
-	if err != nil {
-		log.Fatalf("Invalid ASYNC_CONCURRENCY value: %v", err)
-	}
-	cfg.Async.Concurrency = asyncConcurrency
-
-	asyncQueues := getEnv("ASYNC_QUEUES", "{\"critical\": 6, \"default\": 3}")
-	cfg.Async.Queues = make(map[string]int)
-	err = json.Unmarshal([]byte(asyncQueues), &cfg.Async.Queues)
-	if err != nil {
-		log.Fatalf("Invalid ASYNC_QUEUES value: %v", err)
-	}
-
 	return cfg
 }
 
-// Get returns the loaded configuration
 func Get() *Config {
 	if cfg == nil {
 		return Load()
@@ -126,27 +116,10 @@ func SetForTests(testCfg *Config) {
 	cfg = testCfg
 }
 
-// getEnv gets environment variable with fallback
-func getEnv(key, fallback string) string {
-	if value, exists := os.LookupEnv(key); exists {
-		return value
-	}
-	return fallback
-}
-
-// DatabaseURL returns formatted database connection string
 func (c *Config) DatabaseURL() string {
-	return fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable&search_path=%s",
-		c.Database.Username,
-		c.Database.Password,
-		c.Database.Host,
-		c.Database.Port,
-		c.Database.Database,
-		c.Database.Schema,
-	)
+	return c.Database.DatabaseURL()
 }
 
-// RedisURL returns formatted redis connection string
 func (c *Config) RedisURL() string {
-	return fmt.Sprintf("%s:%s", c.Redis.Host, c.Redis.Port)
+	return c.Redis.URL()
 }

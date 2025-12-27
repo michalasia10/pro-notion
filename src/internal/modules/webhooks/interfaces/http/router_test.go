@@ -24,15 +24,7 @@ import (
 
 func testWebhookConfig() *config.Config {
 	return &config.Config{
-		Notion: struct {
-			ClientID      string
-			ClientSecret  string
-			RedirectURL   string
-			APIVersion    string
-			WebhookSecret string
-		}{
-			WebhookSecret: "test-webhook-secret",
-		},
+		Notion: config.Notion{WebhookSecret: "test-webhook-secret"},
 	}
 }
 
@@ -72,15 +64,7 @@ var _ = Describe("Webhook Router", func() {
 		It("should reject requests without webhook secret configured", func() {
 			// Temporarily set empty secret
 			emptyCfg := &config.Config{
-				Notion: struct {
-					ClientID      string
-					ClientSecret  string
-					RedirectURL   string
-					APIVersion    string
-					WebhookSecret string
-				}{
-					WebhookSecret: "",
-				},
+				Notion: config.Notion{WebhookSecret: ""},
 			}
 			config.SetForTests(emptyCfg)
 

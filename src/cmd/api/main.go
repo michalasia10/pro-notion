@@ -12,6 +12,7 @@ import (
 	"src/internal/config"
 	"src/internal/database"
 	"src/internal/server"
+
 	_ "src/migrations"
 
 	"github.com/pressly/goose/v3"
