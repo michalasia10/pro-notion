@@ -52,7 +52,7 @@ func (uc *CreateProjectUseCase) Execute(ctx context.Context, req CreateProjectRe
 		// Check if project already exists for this Notion database
 		_, err := uc.repo.FindByNotionDatabaseID(ctx, req.NotionDatabaseID)
 		if err == nil {
-			return domain.ErrProjectNotFound // Project already exists for this database
+			return domain.ErrProjectAlreadyExists
 		}
 		if err != domain.ErrProjectNotFound {
 			return err

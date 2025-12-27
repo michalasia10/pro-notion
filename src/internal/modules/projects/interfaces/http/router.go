@@ -1,6 +1,7 @@
 package http
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -42,6 +43,9 @@ func NewRouter(
 			NotionWebhookSecret: body.NotionWebhookSecret,
 		})
 		if err != nil {
+			if errors.Is(err, domain.ErrProjectAlreadyExists) {
+				return 0, nil, httpx.Conflict("project already exists", map[string]any{"notionDatabaseId": body.NotionDatabaseID})
+			}
 			return http.StatusInternalServerError, nil, err
 		}
 

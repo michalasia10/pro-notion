@@ -11,6 +11,7 @@ var (
 	ErrInvalidEmail       = errors.New("invalid email address")
 	ErrInvalidUserID      = errors.New("invalid user id")
 	ErrUserNotFound       = errors.New("user not found")
+	ErrUserAlreadyExists  = errors.New("user already exists")
 	ErrNotionTokenMissing = errors.New("notion token missing")
 )
 

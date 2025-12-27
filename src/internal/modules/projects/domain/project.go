@@ -8,7 +8,8 @@ import (
 )
 
 var (
-	ErrProjectNotFound = errors.New("project not found")
+	ErrProjectNotFound      = errors.New("project not found")
+	ErrProjectAlreadyExists = errors.New("project already exists")
 )
 
 // Project represents a Notion database that is being synchronized

@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"errors"
 
 	"gorm.io/gorm"
 
@@ -31,6 +32,9 @@ func (r *UserRepository) Create(ctx context.Context, user domain.User) (domain.U
 	record := toUserRecord(user)
 
 	if err := r.session(ctx).Create(&record).Error; err != nil {
+		if isUniqueViolation(err) {
+			return domain.User{}, domain.ErrUserAlreadyExists
+		}
 		return domain.User{}, err
 	}
 
@@ -73,6 +77,9 @@ func (r *UserRepository) Update(ctx context.Context, user domain.User) (domain.U
 
 	err := r.session(ctx).Save(&record).Error
 	if err != nil {
+		if isUniqueViolation(err) {
+			return domain.User{}, domain.ErrUserAlreadyExists
+		}
 		return domain.User{}, err
 	}
 
@@ -114,4 +121,8 @@ func (r *UserRepository) List(ctx context.Context, offset, limit int) ([]domain.
 	}
 
 	return users, nil
+}
+
+func isUniqueViolation(err error) bool {
+	return errors.Is(err, gorm.ErrDuplicatedKey)
 }

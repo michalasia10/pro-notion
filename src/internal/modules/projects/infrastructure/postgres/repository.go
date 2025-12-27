@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"errors"
 
 	"gorm.io/gorm"
 
@@ -33,6 +34,9 @@ func (r *ProjectRepository) Save(ctx context.Context, project *domain.Project) e
 	record := toProjectRecord(*project)
 
 	if err := r.session(ctx).Create(&record).Error; err != nil {
+		if isUniqueViolation(err) {
+			return domain.ErrProjectAlreadyExists
+		}
 		return err
 	}
 
@@ -119,6 +123,9 @@ func (r *ProjectRepository) Update(ctx context.Context, project *domain.Project)
 
 	err := r.session(ctx).Save(&record).Error
 	if err != nil {
+		if isUniqueViolation(err) {
+			return domain.ErrProjectAlreadyExists
+		}
 		return err
 	}
 
@@ -141,4 +148,8 @@ func (r *ProjectRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	}
 
 	return nil
+}
+
+func isUniqueViolation(err error) bool {
+	return errors.Is(err, gorm.ErrDuplicatedKey)
 }

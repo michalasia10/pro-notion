@@ -1,6 +1,7 @@
 package http
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -31,6 +32,9 @@ func NewRouter(repo domain.UserRepository, txMgr shared.TransactionManager, idGe
 			Name:  body.Name,
 		})
 		if err != nil {
+			if errors.Is(err, domain.ErrUserAlreadyExists) {
+				return 0, nil, httpx.Conflict("user already exists", map[string]any{"email": body.Email})
+			}
 			return http.StatusInternalServerError, nil, err
 		}
 

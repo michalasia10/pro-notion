@@ -151,7 +151,7 @@ var _ = Describe("CreateProjectUseCase", func() {
 			_, err = uc.Execute(ctx, req2)
 
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(Equal(domain.ErrProjectNotFound)) // This should probably be a different error
+			Expect(err).To(Equal(domain.ErrProjectAlreadyExists))
 		})
 
 		It("should return error when transaction fails", func() {

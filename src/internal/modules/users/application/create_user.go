@@ -49,7 +49,7 @@ func (uc *CreateUserUseCase) Execute(ctx context.Context, req CreateUserRequest)
 		// Check if user already exists
 		_, err := uc.repo.GetByEmail(ctx, req.Email)
 		if err == nil {
-			return domain.ErrInvalidEmail // User already exists
+			return domain.ErrUserAlreadyExists
 		}
 		if err != domain.ErrUserNotFound {
 			return err

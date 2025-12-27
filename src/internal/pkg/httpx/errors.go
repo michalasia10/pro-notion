@@ -22,3 +22,7 @@ func NotFound(msg string) *HTTPError {
 func Unprocessable(msg string, details any) *HTTPError {
 	return &HTTPError{StatusCode: http.StatusUnprocessableEntity, Message: msg, Details: details}
 }
+
+func Conflict(msg string, details any) *HTTPError {
+	return &HTTPError{StatusCode: http.StatusConflict, Message: msg, Details: details}
+}
