@@ -11,8 +11,9 @@ import (
 	"github.com/hibiken/asynq"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/redis/go-redis/v9"
 	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/modules/redis"
+	tcRedis "github.com/testcontainers/testcontainers-go/modules/redis"
 	"github.com/testcontainers/testcontainers-go/wait"
 
 	"src/internal/config"
@@ -36,7 +37,7 @@ var (
 func mustStartRedisContainer() (func(context.Context, ...testcontainers.TerminateOption) error, error) {
 	ctx := context.Background()
 
-	redisContainer, err := redis.Run(ctx,
+	redisContainer, err := tcRedis.Run(ctx,
 		"redis:7-alpine",
 		testcontainers.WithWaitStrategy(
 			wait.ForLog("Ready to accept connections").
@@ -77,6 +78,20 @@ func mustStartRedisContainer() (func(context.Context, ...testcontainers.Terminat
 	return redisContainer.Terminate, nil
 }
 
+func redisClientOptions() asynq.RedisClientOpt {
+	return asynq.RedisClientOpt{
+		Addr:     testConfig.RedisURL(),
+		Password: testConfig.Redis.Password,
+	}
+}
+
+func redisStreamOptions() redis.Options {
+	return redis.Options{
+		Addr:     testConfig.RedisURL(),
+		Password: testConfig.Redis.Password,
+	}
+}
+
 var _ = BeforeSuite(func() {
 	var err error
 	teardown, err = mustStartRedisContainer()
@@ -100,7 +115,10 @@ var _ = Describe("Infrastructure", func() {
 		// Create logger
 		logger := watermill.NewStdLogger(false, false)
 
-		pubSub, err := eventbus.NewPubSub(logger, eventbus.Config{})
+		pubSub, err := eventbus.NewPubSub(logger, eventbus.Config{
+			Transport:    eventbus.TransportRedis,
+			RedisOptions: redisStreamOptions(),
+		})
 		Expect(err).ToNot(HaveOccurred())
 
 		// Create router
@@ -154,10 +172,7 @@ var _ = Describe("Infrastructure", func() {
 
 	It("should enqueue and process jobs successfully", func() {
 		// Create Redis client for Asynq
-		redisOpt := asynq.RedisClientOpt{
-			Addr:     testConfig.RedisURL(),
-			Password: testConfig.Redis.Password,
-		}
+		redisOpt := redisClientOptions()
 
 		// Create Asynq client
 		client := taskqueue.NewClient(redisOpt)

@@ -24,9 +24,21 @@ func main() {
 	config.Load()
 	logger := watermill.NewStdLogger(false, false)
 	cfg := config.Get()
+
+	redisOpts := redis.Options{Addr: cfg.RedisURL(), Password: cfg.Redis.Password}
+	redisClient := redis.NewClient(&redisOpts)
+	if err := redisClient.Ping(context.Background()).Err(); err != nil {
+		log.Fatalf("redis not reachable: %v", err)
+	}
+	defer func() {
+		if err := redisClient.Close(); err != nil {
+			log.Printf("error closing redis client: %v", err)
+		}
+	}()
+
 	eventBusCfg := eventbus.Config{
 		Transport:       eventbus.Transport(cfg.EventBus.Transport),
-		RedisOptions:    redis.Options{Addr: cfg.RedisURL(), Password: cfg.Redis.Password},
+		RedisOptions:    redisOpts,
 		ConsumerGroup:   cfg.EventBus.ConsumerGroup,
 		ConsumerTimeout: cfg.EventBus.GetTimeoutInterval(),
 		ClaimInterval:   cfg.EventBus.GetClaimInterval(),

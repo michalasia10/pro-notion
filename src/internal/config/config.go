@@ -54,7 +54,7 @@ type JWT struct {
 }
 
 type EventBus struct {
-	Transport            string `env:"TRANSPORT"`
+	Transport            string `env:"TRANSPORT" envDefault:"redis"`
 	ConsumerGroup        string `env:"CONSUMER_GROUP" envDefault:"worker_group"`
 	TimeoutIntervalMin   int    `env:"TIMEOUT_INTERNAL_MINUTE" envDefault:"5"`
 	ClaimIntervalSeconds int    `env:"CLAIM_INTERAL_SECONDS" envDefault:"5"`

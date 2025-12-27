@@ -82,8 +82,11 @@ func newPubRedis(logger watermill.LoggerAdapter, cfg Config) (*PubSub, error) {
 
 // NewPubSub builds a publisher/subscriber pair for the configured transport.
 func NewPubSub(logger watermill.LoggerAdapter, cfg Config) (*PubSub, error) {
+	if cfg.Transport == "" {
+		cfg.Transport = TransportRedis
+	}
 	switch cfg.Transport {
-	case TransportGoChannel, "":
+	case TransportGoChannel:
 		return newPubSubInMemory(logger, cfg)
 	case TransportRedis:
 		return newPubRedis(logger, cfg)
