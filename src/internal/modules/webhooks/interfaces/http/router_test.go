@@ -11,6 +11,8 @@ import (
 	"net/http/httptest"
 	"time"
 
+	"log"
+
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/pubsub/gochannel"
@@ -18,7 +20,9 @@ import (
 	. "github.com/onsi/gomega"
 
 	"src/internal/config"
+	shared "src/internal/modules/shared/domain"
 	sharedEvents "src/internal/modules/shared/domain/events"
+	webhookInfra "src/internal/modules/webhooks/infrastructure/http"
 	webhooksHTTP "src/internal/modules/webhooks/interfaces/http"
 )
 
@@ -47,7 +51,12 @@ var _ = Describe("Webhook Router", func() {
 		pubSub := gochannel.NewGoChannel(gochannel.Config{}, watermill.NewStdLogger(false, false))
 		publisher = pubSub
 
-		router = webhooksHTTP.NewRouter(publisher)
+		router = webhooksHTTP.NewRouter(webhooksHTTP.RouterDeps{
+			Validator:   webhookInfra.NewHMACSHA256Validator(),
+			Classifier:  webhookInfra.NewPayloadClassifier(),
+			Publisher:   webhookInfra.NewWatermillEventPublisher(publisher, log.Default()),
+			IDGenerator: shared.NewUUIDGenerator(),
+		})
 	})
 
 	AfterEach(func() {

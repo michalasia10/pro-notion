@@ -48,7 +48,9 @@ type Notion struct {
 }
 
 type JWT struct {
-	Secret string `env:"SECRET" envDefault:"your-secret-key"`
+	Secret   string `env:"SECRET" envDefault:"your-secret-key"`
+	Issuer   string `env:"ISSUER" envDefault:"pro-notion-api"`
+	Audience string `env:"AUDIENCE" envDefault:"pro-notion-client"`
 }
 
 type EventBus struct {

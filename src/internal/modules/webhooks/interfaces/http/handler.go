@@ -1,7 +1,6 @@
 package http
 
 import (
-	"log"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -13,8 +12,6 @@ import (
 	"src/internal/pkg/httpx"
 
 	shared "src/internal/modules/shared/domain"
-
-	"github.com/ThreeDotsLabs/watermill/message"
 )
 
 // WebhookHandler handles HTTP requests for webhooks
@@ -95,15 +92,22 @@ func (h *WebhookHandler) HandleWebhook(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// NewRouter creates a new HTTP router for the webhooks module
-func NewRouter(publisher message.Publisher) chi.Router {
+// RouterDeps contains dependencies for the webhook router.
+type RouterDeps struct {
+	Validator   domain.WebhookValidator
+	Classifier  domain.WebhookRequestClassifier
+	Publisher   domain.WebhookEventPublisher
+	IDGenerator shared.IDGenerator
+}
+
+// NewRouter creates a new HTTP router for the webhooks module using injected dependencies.
+func NewRouter(deps RouterDeps) chi.Router {
 	r := chi.NewRouter()
 
-	// Initialize dependencies
-	validator := webhookInfra.NewHMACSHA256Validator()
-	classifier := webhookInfra.NewPayloadClassifier()
-	eventPublisher := webhookInfra.NewWatermillEventPublisher(publisher, log.Default())
-	idGenerator := shared.NewUUIDGenerator()
+	validator := deps.Validator
+	classifier := deps.Classifier
+	eventPublisher := deps.Publisher
+	idGenerator := deps.IDGenerator
 
 	// Initialize application service
 	webhookService := application.NewWebhookService(

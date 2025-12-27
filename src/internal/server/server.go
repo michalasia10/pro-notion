@@ -2,7 +2,6 @@ package server
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"time"
 
@@ -12,8 +11,9 @@ import (
 	"src/internal/config"
 	"src/internal/database"
 	projectdomain "src/internal/modules/projects/domain"
-	userdomain "src/internal/modules/users/domain"
 	shared "src/internal/modules/shared/domain"
+	userdomain "src/internal/modules/users/domain"
+	webhooksHTTP "src/internal/modules/webhooks/interfaces/http"
 	"src/internal/pkg/notion"
 )
 
@@ -28,6 +28,7 @@ type Server struct {
 	idGen       shared.IDGenerator
 	clock       shared.Clock
 	notion      *notion.Service
+	webhookDeps webhooksHTTP.RouterDeps
 }
 
 type Dependencies struct {
@@ -40,6 +41,7 @@ type Dependencies struct {
 	IDGen       shared.IDGenerator
 	Clock       shared.Clock
 	Notion      *notion.Service
+	WebhookDeps webhooksHTTP.RouterDeps
 }
 
 func NewServer(deps Dependencies) *http.Server {
@@ -56,6 +58,7 @@ func NewServer(deps Dependencies) *http.Server {
 		idGen:       deps.IDGen,
 		clock:       deps.Clock,
 		notion:      deps.Notion,
+		webhookDeps: deps.WebhookDeps,
 	}
 
 	// Declare Server config

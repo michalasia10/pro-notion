@@ -13,19 +13,21 @@ import (
 
 	"src/internal/config"
 	"src/internal/database"
+	projectsPostgres "src/internal/modules/projects/infrastructure/postgres"
+	shared "src/internal/modules/shared/domain"
+	usersPostgres "src/internal/modules/users/infrastructure/postgres"
+	webhookInfra "src/internal/modules/webhooks/infrastructure/http"
+	webhooksHTTP "src/internal/modules/webhooks/interfaces/http"
 	"src/internal/pkg/eventbus"
 	"src/internal/pkg/notion"
 	"src/internal/pkg/transaction"
 	"src/internal/server"
-	projectsPostgres "src/internal/modules/projects/infrastructure/postgres"
-	shared "src/internal/modules/shared/domain"
-	usersPostgres "src/internal/modules/users/infrastructure/postgres"
 
 	_ "src/migrations"
 
 	"github.com/ThreeDotsLabs/watermill"
-	"github.com/redis/go-redis/v9"
 	"github.com/pressly/goose/v3"
+	"github.com/redis/go-redis/v9"
 )
 
 func gracefulShutdown(apiServer *http.Server, done chan bool) {
@@ -106,6 +108,13 @@ func main() {
 		}
 	}()
 
+	webhookDeps := webhooksHTTP.RouterDeps{
+		Validator:   webhookInfra.NewHMACSHA256Validator(),
+		Classifier:  webhookInfra.NewPayloadClassifier(),
+		Publisher:   webhookInfra.NewWatermillEventPublisher(pubSub.Publisher, log.Default()),
+		IDGenerator: idGen,
+	}
+
 	server := server.NewServer(server.Dependencies{
 		DB:          dbService,
 		Redis:       redisClient,
@@ -116,6 +125,7 @@ func main() {
 		IDGen:       idGen,
 		Clock:       clock,
 		Notion:      notionService,
+		WebhookDeps: webhookDeps,
 	})
 
 	// Create a done channel to signal when the shutdown is complete
@@ -124,7 +134,7 @@ func main() {
 	// Run graceful shutdown in a separate goroutine
 	go gracefulShutdown(server, done)
 
-	err := server.ListenAndServe()
+	err = server.ListenAndServe()
 	if err != nil && err != http.ErrServerClosed {
 		panic(fmt.Sprintf("http server error: %s", err))
 	}

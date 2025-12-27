@@ -25,6 +25,8 @@ func GenerateJWTToken(userID uuid.UUID) (string, error) {
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)), // 24 hours
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			Issuer:    cfg.JWT.Issuer,
+			Audience:  jwt.ClaimStrings{cfg.JWT.Audience},
 		},
 	}
 

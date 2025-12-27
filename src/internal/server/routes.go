@@ -49,7 +49,7 @@ func (s *Server) RegisterRoutes() http.Handler {
 
 		// Webhook routes with signature validation
 		r.Route("/webhooks", func(r chi.Router) {
-			r.Mount("/", webhooksHTTP.NewRouter(s.publisher))
+			r.Mount("/", webhooksHTTP.NewRouter(s.webhookDeps))
 		})
 	})
 

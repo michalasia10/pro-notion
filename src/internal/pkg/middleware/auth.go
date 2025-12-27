@@ -30,7 +30,7 @@ func JWTAuthMiddleware(next http.Handler) http.Handler {
 		// Parse and validate token
 		cfg := config.Get()
 		token, err := jwt.ParseWithClaims(tokenString, &JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
-			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			if token.Method != jwt.SigningMethodHS256 {
 				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 			}
 			return []byte(cfg.JWT.Secret), nil
@@ -42,6 +42,14 @@ func JWTAuthMiddleware(next http.Handler) http.Handler {
 		}
 
 		if claims, ok := token.Claims.(*JWTClaims); ok && token.Valid {
+			if cfg.JWT.Issuer != "" && claims.Issuer != cfg.JWT.Issuer {
+				httpx.WriteJSON(w, http.StatusUnauthorized, map[string]string{"error": "Invalid token issuer"})
+				return
+			}
+			if cfg.JWT.Audience != "" && !containsAudience(claims.Audience, cfg.JWT.Audience) {
+				httpx.WriteJSON(w, http.StatusUnauthorized, map[string]string{"error": "Invalid token audience"})
+				return
+			}
 			// Set user ID in context
 			ctx := SetUserID(r.Context(), claims.UserID)
 			next.ServeHTTP(w, r.WithContext(ctx))
@@ -49,4 +57,13 @@ func JWTAuthMiddleware(next http.Handler) http.Handler {
 			httpx.WriteJSON(w, http.StatusUnauthorized, map[string]string{"error": "Invalid token claims"})
 		}
 	})
+}
+
+func containsAudience(aud jwt.ClaimStrings, want string) bool {
+	for _, a := range aud {
+		if a == want {
+			return true
+		}
+	}
+	return false
 }
