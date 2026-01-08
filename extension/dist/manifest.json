@@ -1,0 +1,14 @@
+{
+  "manifest_version": 3,
+  "name": "Pro Notion Overlay",
+  "version": "0.1.0",
+  "description": "Overlay for advanced project management views inside Notion.",
+  "content_scripts": [
+    {
+      "matches": ["*://*.notion.so/*", "*://www.notion.so/*", "*://*.notion.site/*"],
+      "js": ["content/main.js"],
+      "run_at": "document_idle",
+      "all_frames": true
+    }
+  ]
+}

@@ -1,0 +1,48 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+.pn-overlay-root {
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --pn-bg: #fefdfb;
+  --pn-panel: #ffffff;
+  --pn-text: #37352f;
+  --pn-muted: rgba(55, 53, 47, 0.6);
+  --pn-muted-50: rgba(55, 53, 47, 0.5);
+  --pn-muted-40: rgba(55, 53, 47, 0.4);
+  --pn-border: rgba(0, 0, 0, 0.06);
+  --pn-border-strong: rgba(0, 0, 0, 0.1);
+  --pn-border-soft: rgba(0, 0, 0, 0.08);
+  --pn-surface: rgba(255, 255, 255, 0.4);
+  --pn-surface-weak: rgba(255, 255, 255, 0.2);
+  --pn-hover: rgba(0, 0, 0, 0.03);
+  --pn-hover-strong: rgba(0, 0, 0, 0.05);
+  --pn-chip-bg: rgba(0, 0, 0, 0.03);
+  --pn-muted-bg: rgba(0, 0, 0, 0.02);
+  --pn-button-bg: #37352f;
+  --pn-button-text: #ffffff;
+}
+
+.notion-dark-theme .pn-overlay-root {
+  --pn-bg: #191919;
+  --pn-panel: #1f1f1f;
+  --pn-text: #e7e5e1;
+  --pn-muted: rgba(231, 229, 225, 0.6);
+  --pn-muted-50: rgba(231, 229, 225, 0.5);
+  --pn-muted-40: rgba(231, 229, 225, 0.4);
+  --pn-border: rgba(255, 255, 255, 0.06);
+  --pn-border-strong: rgba(255, 255, 255, 0.1);
+  --pn-border-soft: rgba(255, 255, 255, 0.08);
+  --pn-surface: rgba(255, 255, 255, 0.02);
+  --pn-surface-weak: rgba(255, 255, 255, 0.01);
+  --pn-hover: rgba(255, 255, 255, 0.03);
+  --pn-hover-strong: rgba(255, 255, 255, 0.05);
+  --pn-chip-bg: rgba(255, 255, 255, 0.04);
+  --pn-muted-bg: rgba(255, 255, 255, 0.03);
+  --pn-button-bg: #e7e5e1;
+  --pn-button-text: #1f1f1f;
+}
