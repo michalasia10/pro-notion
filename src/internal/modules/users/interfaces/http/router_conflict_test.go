@@ -31,6 +31,10 @@ func (c conflictUserRepo) GetByID(_ context.Context, id string) (domain.User, er
 	return domain.User{}, domain.ErrUserNotFound
 }
 
+func (c conflictUserRepo) GetByInternalID(_ context.Context, id string) (domain.User, error) {
+	return domain.User{}, domain.ErrUserNotFound
+}
+
 func (c conflictUserRepo) GetByEmail(_ context.Context, email string) (domain.User, error) {
 	if c.existing {
 		return domain.User{Email: email, ID: uuid.New()}, nil

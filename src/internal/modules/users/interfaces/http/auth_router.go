@@ -4,15 +4,19 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"net/http"
+	"net/url"
+	"src/internal/config"
+	"src/internal/modules/users/application"
+	"src/internal/modules/users/domain"
+	"src/internal/pkg/httpx"
+	"src/internal/pkg/notion"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 
 	shared "src/internal/modules/shared/domain"
-	"src/internal/modules/users/application"
-	"src/internal/modules/users/domain"
-	"src/internal/pkg/httpx"
-	"src/internal/pkg/notion"
+
+	usersinfra "src/internal/modules/users/infrastructure"
 )
 
 // NewAuthRouter creates a new HTTP router for authentication endpoints
@@ -28,6 +32,9 @@ func NewAuthRouter(
 	// Initialize use cases
 	getAuthURLUC := application.NewGetAuthorizationURLUseCase(notionService)
 	notionOAuthUC := application.NewNotionOAuthUseCase(repo, clock, txMgr, idGen, notionService)
+	cfg := config.Get()
+	extensionStateSvc := usersinfra.NewExtensionOAuthStateJWTService(cfg.JWT.Secret, cfg.JWT.Issuer, clock)
+	extensionOAuthUC := application.NewExtensionOAuthUseCase(getAuthURLUC, notionOAuthUC, extensionStateSvc)
 
 	// Notion OAuth routes
 	r.Route("/notion", func(r chi.Router) {
@@ -64,6 +71,27 @@ func NewAuthRouter(
 			httpx.WriteJSON(w, http.StatusOK, dto)
 		})
 
+		// GET /api/v1/auth/notion/authorize-extension
+		r.Get("/authorize-extension", func(w http.ResponseWriter, req *http.Request) {
+			redirectURI := req.URL.Query().Get("redirect_uri")
+			if redirectURI == "" {
+				httpx.WriteJSON(w, http.StatusBadRequest, map[string]any{"error": "missing_redirect_uri"})
+				return
+			}
+
+			resp, state, err := extensionOAuthUC.Start(req.Context(), redirectURI)
+			if err != nil {
+				httpx.WriteJSON(w, http.StatusBadRequest, map[string]any{"error": err.Error()})
+				return
+			}
+
+			dto := NotionAuthURLResponseDTO{
+				AuthorizationURL: resp.AuthorizationURL,
+				State:            state,
+			}
+			httpx.WriteJSON(w, http.StatusOK, dto)
+		})
+
 		// GET /api/v1/auth/notion/callback
 		r.Get("/callback", func(w http.ResponseWriter, req *http.Request) {
 			code := req.URL.Query().Get("code")
@@ -71,6 +99,12 @@ func NewAuthRouter(
 			errorParam := req.URL.Query().Get("error")
 
 			if errorParam != "" {
+				if state != "" {
+					if redirectURI, err := extensionOAuthUC.ResolveRedirect(state); err == nil {
+						redirectWithError(w, redirectURI, errorParam)
+						return
+					}
+				}
 				httpx.WriteJSON(w, http.StatusBadRequest, map[string]any{
 					"error":   "oauth_error",
 					"message": "OAuth authorization failed",
@@ -89,6 +123,16 @@ func NewAuthRouter(
 
 			stateCookie, err := req.Cookie("notion_oauth_state")
 			if err != nil || state == "" || stateCookie.Value != state {
+				if state != "" && extensionOAuthUC.IsExtensionState(state) {
+					resp, redirectURI, exchangeErr := extensionOAuthUC.Exchange(req.Context(), code, state)
+					if exchangeErr != nil {
+						redirectWithError(w, redirectURI, exchangeErr.Error())
+						return
+					}
+					redirectWithJWT(w, redirectURI, resp.JWTToken)
+					return
+				}
+
 				httpx.WriteJSON(w, http.StatusBadRequest, map[string]any{
 					"error":   "invalid_state",
 					"message": "Invalid or missing state parameter",
@@ -137,4 +181,27 @@ func expiredStateCookie() *http.Cookie {
 		SameSite: http.SameSiteLaxMode,
 		Expires:  time.Now().Add(-time.Hour),
 	}
+}
+
+func redirectWithJWT(w http.ResponseWriter, redirectURI, jwtToken string) {
+	target := addQueryParam(redirectURI, "jwt_token", jwtToken)
+	w.Header().Set("Location", target)
+	w.WriteHeader(http.StatusFound)
+}
+
+func redirectWithError(w http.ResponseWriter, redirectURI, err string) {
+	target := addQueryParam(redirectURI, "error", err)
+	w.Header().Set("Location", target)
+	w.WriteHeader(http.StatusFound)
+}
+
+func addQueryParam(rawURL, key, value string) string {
+	parsed, err := url.Parse(rawURL)
+	if err != nil {
+		return rawURL
+	}
+	query := parsed.Query()
+	query.Set(key, value)
+	parsed.RawQuery = query.Encode()
+	return parsed.String()
 }

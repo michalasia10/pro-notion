@@ -16,6 +16,30 @@ type GetUserResponse struct {
 	User domain.User
 }
 
+// GetCurrentUserUseCase handles user retrieval by internal UUID
+type GetCurrentUserUseCase struct {
+	repo domain.UserRepository
+}
+
+// NewGetCurrentUserUseCase creates a new GetCurrentUserUseCase
+func NewGetCurrentUserUseCase(repo domain.UserRepository) *GetCurrentUserUseCase {
+	return &GetCurrentUserUseCase{repo: repo}
+}
+
+// Execute retrieves a user by internal UUID
+func (uc *GetCurrentUserUseCase) Execute(ctx context.Context, userID string) (GetUserResponse, error) {
+	if userID == "" {
+		return GetUserResponse{}, domain.ErrInvalidUserID
+	}
+
+	user, err := uc.repo.GetByInternalID(ctx, userID)
+	if err != nil {
+		return GetUserResponse{}, err
+	}
+
+	return GetUserResponse{User: user}, nil
+}
+
 // GetUserUseCase handles user retrieval business logic
 type GetUserUseCase struct {
 	repo domain.UserRepository

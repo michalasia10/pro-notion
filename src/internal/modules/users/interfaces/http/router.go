@@ -10,6 +10,7 @@ import (
 	"src/internal/modules/users/application"
 	"src/internal/modules/users/domain"
 	"src/internal/pkg/httpx"
+	authmw "src/internal/pkg/middleware"
 )
 
 // NewRouter creates a new HTTP router for the users module
@@ -20,6 +21,7 @@ func NewRouter(repo domain.UserRepository, txMgr shared.TransactionManager, idGe
 	createUserUC := application.NewCreateUserUseCase(repo, idGen, clock, txMgr)
 	getUserUC := application.NewGetUserUseCase(repo)
 	getUserByEmailUC := application.NewGetUserByEmailUseCase(repo)
+	getCurrentUserUC := application.NewGetCurrentUserUseCase(repo)
 
 	// Define routes
 	r.Post("/", httpx.EndpointJSON[CreateUserRequestDTO](func(req *http.Request, body CreateUserRequestDTO) (int, any, error) {
@@ -41,6 +43,27 @@ func NewRouter(repo domain.UserRepository, txMgr shared.TransactionManager, idGe
 		dto := toUserResponseDTO(resp.User)
 		return http.StatusCreated, dto, nil
 	}))
+
+	r.Group(func(r chi.Router) {
+		r.Use(authmw.JWTAuthMiddleware)
+		r.Get("/me", httpx.Endpoint(func(req *http.Request) (int, any, error) {
+			userID, err := authmw.GetUserID(req.Context())
+			if err != nil {
+				return http.StatusUnauthorized, nil, err
+			}
+
+			resp, err := getCurrentUserUC.Execute(req.Context(), userID.String())
+			if err != nil {
+				if err == domain.ErrUserNotFound {
+					return http.StatusNotFound, nil, err
+				}
+				return http.StatusInternalServerError, nil, err
+			}
+
+			dto := toUserResponseDTO(resp.User)
+			return http.StatusOK, dto, nil
+		}))
+	})
 
 	r.Get("/{userID}", httpx.Endpoint(func(req *http.Request) (int, any, error) {
 		userID := chi.URLParam(req, "userID")

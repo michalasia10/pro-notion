@@ -27,25 +27,35 @@ func NewOAuth(clientID, clientSecret, redirectURI string, opts ...ClientOption) 
 
 // GetAuthorizationURL generates the OAuth authorization URL
 func (o *OAuth) GetAuthorizationURL(state string) string {
+	return o.GetAuthorizationURLWithRedirect(state, o.redirectURI)
+}
+
+// ExchangeCodeForToken exchanges an authorization code for an access token
+func (o *OAuth) ExchangeCodeForToken(code string) (*OAuthTokenResponse, error) {
+	return o.ExchangeCodeForTokenWithRedirect(code, o.redirectURI)
+}
+
+// GetAuthorizationURLWithRedirect generates the OAuth authorization URL with a custom redirect URI
+func (o *OAuth) GetAuthorizationURLWithRedirect(state, redirectURI string) string {
 	baseURL := "https://api.notion.com/v1/oauth/authorize"
 
 	params := url.Values{}
 	params.Add("client_id", o.clientID)
 	params.Add("response_type", "code")
 	params.Add("owner", "user")
-	params.Add("redirect_uri", o.redirectURI)
+	params.Add("redirect_uri", redirectURI)
 	if state != "" {
 		params.Add("state", state)
 	}
 	return fmt.Sprintf("%s?%s", baseURL, params.Encode())
 }
 
-// ExchangeCodeForToken exchanges an authorization code for an access token
-func (o *OAuth) ExchangeCodeForToken(code string) (*OAuthTokenResponse, error) {
+// ExchangeCodeForTokenWithRedirect exchanges an authorization code using a custom redirect URI
+func (o *OAuth) ExchangeCodeForTokenWithRedirect(code, redirectURI string) (*OAuthTokenResponse, error) {
 	tokenReq := OAuthTokenRequest{
 		GrantType:   "authorization_code",
 		Code:        code,
-		RedirectURI: o.redirectURI,
+		RedirectURI: redirectURI,
 	}
 	accessToken := base64.StdEncoding.EncodeToString(fmt.Appendf(nil, "%s:%s", o.clientID, o.clientSecret))
 

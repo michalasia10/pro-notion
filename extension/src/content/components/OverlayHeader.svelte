@@ -7,15 +7,17 @@
 
   export let currentStatus: StatusConfig
   export let onClose: () => void
+  export let title: string
+  export let subtitle: string
 </script>
 
 <div class="flex items-center justify-between border-b border-[color:var(--pn-border)] px-6 py-3.5 bg-[color:var(--pn-surface)]">
   <div class="flex items-center gap-4">
     <div class="flex flex-col">
       <div class="flex items-center gap-2">
-        <h2 class="text-[15px] font-semibold text-[color:var(--pn-text)]">Project Alpha</h2>
+        <h2 class="text-[15px] font-semibold text-[color:var(--pn-text)]">{title}</h2>
         <span class="text-[13px] text-[color:var(--pn-muted-40)]">/</span>
-        <span class="text-[13px] text-[color:var(--pn-muted)]">Tasks Database</span>
+        <span class="text-[13px] text-[color:var(--pn-muted)]">{subtitle}</span>
       </div>
     </div>
 

@@ -56,6 +56,21 @@ func (r *UserRepository) GetByID(ctx context.Context, id string) (domain.User, e
 	return toDomainUser(record), nil
 }
 
+// GetByInternalID retrieves a user by internal UUID from the database
+func (r *UserRepository) GetByInternalID(ctx context.Context, id string) (domain.User, error) {
+	var record UserRecord
+
+	err := r.session(ctx).Where("id = ?", id).First(&record).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return domain.User{}, domain.ErrUserNotFound
+		}
+		return domain.User{}, err
+	}
+
+	return toDomainUser(record), nil
+}
+
 // GetByEmail retrieves a user by email from the database
 func (r *UserRepository) GetByEmail(ctx context.Context, email string) (domain.User, error) {
 	var record UserRecord

@@ -3,6 +3,12 @@
   "name": "Pro Notion Overlay",
   "version": "0.1.0",
   "description": "Overlay for advanced project management views inside Notion.",
+  "permissions": ["identity", "storage"],
+  "host_permissions": ["http://localhost:8080/*"],
+  "background": {
+    "service_worker": "content/background.js",
+    "type": "module"
+  },
   "content_scripts": [
     {
       "matches": ["*://*.notion.so/*", "*://www.notion.so/*", "*://*.notion.site/*"],

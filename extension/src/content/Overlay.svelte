@@ -10,13 +10,16 @@
     SyncCta,
     TimelineView
   } from "./components"
+  import { getCurrentUser } from "./api"
 
   type ViewType = "hierarchy" | "dependencies" | "timeline"
   type SyncStatus = "not-connected" | "syncing" | "up-to-date" | "error"
 
   let isOpen = false
   let activeView: ViewType = "hierarchy"
-  let syncStatus: SyncStatus = "up-to-date"
+  let syncStatus: SyncStatus = "syncing"
+  let userName = "Project Alpha"
+  let workspaceName = "Tasks Database"
 
   const statusConfig = {
     "not-connected": {
@@ -49,6 +52,35 @@
     isOpen = false
   }
 
+  async function connectNotion() {
+    syncStatus = "syncing"
+    try {
+      const result = await new Promise<{ ok: boolean; error?: string }>((resolve) => {
+        chrome.runtime.sendMessage({ type: "pn-auth-start" }, resolve)
+      })
+      if (!result.ok) {
+        syncStatus = "error"
+        return
+      }
+      await refreshCurrentUser()
+    } catch (_error) {
+      syncStatus = "error"
+    }
+  }
+
+  async function refreshCurrentUser() {
+    syncStatus = "syncing"
+    const user = await getCurrentUser()
+    if (!user) {
+      syncStatus = "not-connected"
+      return
+    }
+
+    userName = user.name || "Project Alpha"
+    workspaceName = user.notion_workspace_id ? "Workspace" : "Tasks Database"
+    syncStatus = user.has_notion_integration ? "up-to-date" : "not-connected"
+  }
+
   function cycleStatus() {
     const statuses: SyncStatus[] = ["not-connected", "syncing", "up-to-date", "error"]
     const currentIndex = statuses.indexOf(syncStatus)
@@ -62,6 +94,7 @@
       }
     }
     window.addEventListener("keydown", handleEsc)
+    refreshCurrentUser()
     return () => window.removeEventListener("keydown", handleEsc)
   })
 
@@ -74,12 +107,17 @@
   {#if isOpen}
     <div class="fixed inset-0 z-[2147483646] bg-black/20 backdrop-blur-[2px]">
       <div class="relative h-screen w-screen bg-[color:var(--pn-bg)] shadow-xl">
-        <OverlayHeader currentStatus={currentStatus} onClose={close} />
+        <OverlayHeader
+          currentStatus={currentStatus}
+          onClose={close}
+          title={userName}
+          subtitle={workspaceName}
+        />
         <OverlayTabs activeView={activeView} onChange={(view) => (activeView = view)} />
 
         <div class="h-[calc(100vh-110px)] overflow-auto px-6 py-5">
           {#if syncStatus === "not-connected"}
-            <SyncCta onConnect={() => (syncStatus = "syncing")} />
+            <SyncCta onConnect={connectNotion} />
           {:else}
             {#if activeView === "hierarchy"}
               <HierarchyView />

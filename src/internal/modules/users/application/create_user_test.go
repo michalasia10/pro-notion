@@ -28,6 +28,10 @@ func (s *stubUserRepo) GetByID(ctx context.Context, id string) (domain.User, err
 	return domain.User{}, domain.ErrUserNotFound
 }
 
+func (s *stubUserRepo) GetByInternalID(ctx context.Context, id string) (domain.User, error) {
+	return domain.User{}, domain.ErrUserNotFound
+}
+
 func (s *stubUserRepo) GetByEmail(ctx context.Context, email string) (domain.User, error) {
 	if s.existing {
 		return domain.User{Email: email, ID: uuid.New()}, nil

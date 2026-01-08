@@ -97,6 +97,7 @@ GET  /api/v1/auth/notion/callback         - Handle OAuth callback
 - [ ] Create an **asynq** worker for heavy-lifting tasks like critical path calculation
 - [ ] Domain entities (Task, TaskDependency, TaskHierarchy)
 - [ ] Business logic for task dependencies and cascade effects
+- [ ] Support full hierarchy reconstruction (not just dependency chains), including rollups/projects/tasks relationships
 - [ ] Database migrations for `tasks`, `dependencies`, and `hierarchy` tables
 
 ### 8. API Endpoints & Real-time Frontend Updates

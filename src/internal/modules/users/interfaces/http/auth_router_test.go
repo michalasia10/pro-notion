@@ -25,6 +25,9 @@ func (d dummyUserRepo) Create(ctx context.Context, user domain.User) (domain.Use
 func (d dummyUserRepo) GetByID(ctx context.Context, id string) (domain.User, error) {
 	return domain.User{}, domain.ErrUserNotFound
 }
+func (d dummyUserRepo) GetByInternalID(ctx context.Context, id string) (domain.User, error) {
+	return domain.User{}, domain.ErrUserNotFound
+}
 func (d dummyUserRepo) GetByEmail(ctx context.Context, email string) (domain.User, error) {
 	return domain.User{}, domain.ErrUserNotFound
 }

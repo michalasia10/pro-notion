@@ -13,8 +13,9 @@ import (
 
 // NotionOAuthRequest contains the data needed to complete Notion OAuth
 type NotionOAuthRequest struct {
-	Code  string
-	State string
+	Code        string
+	State       string
+	RedirectURI string
 }
 
 // NotionOAuthResponse contains the OAuth completion result
@@ -58,7 +59,13 @@ func (uc *NotionOAuthUseCase) Execute(ctx context.Context, req NotionOAuthReques
 
 	err := uc.txMgr.WithinTransaction(ctx, func(ctx context.Context) error {
 		// Exchange code for token
-		tokenResp, err := uc.notionClient.ExchangeCodeForToken(req.Code)
+		var tokenResp *notion.OAuthTokenResponse
+		var err error
+		if req.RedirectURI != "" {
+			tokenResp, err = uc.notionClient.ExchangeCodeForTokenWithRedirect(req.Code, req.RedirectURI)
+		} else {
+			tokenResp, err = uc.notionClient.ExchangeCodeForToken(req.Code)
+		}
 		if err != nil {
 			return fmt.Errorf("failed to exchange code for token ( us ): %w", err)
 		}
@@ -154,7 +161,8 @@ func (uc *NotionOAuthUseCase) Execute(ctx context.Context, req NotionOAuthReques
 
 // GetAuthorizationURLRequest contains the data needed to generate auth URL
 type GetAuthorizationURLRequest struct {
-	State string
+	State       string
+	RedirectURI string
 }
 
 // GetAuthorizationURLResponse contains the authorization URL
@@ -176,7 +184,12 @@ func NewGetAuthorizationURLUseCase(notionClient *notion.Service) *GetAuthorizati
 
 // Execute generates the Notion OAuth authorization URL
 func (uc *GetAuthorizationURLUseCase) Execute(ctx context.Context, req GetAuthorizationURLRequest) (GetAuthorizationURLResponse, error) {
-	authURL := uc.notionClient.GetAuthorizationURL(req.State)
+	var authURL string
+	if req.RedirectURI != "" {
+		authURL = uc.notionClient.GetAuthorizationURLWithRedirect(req.State, req.RedirectURI)
+	} else {
+		authURL = uc.notionClient.GetAuthorizationURL(req.State)
+	}
 
 	return GetAuthorizationURLResponse{
 		AuthorizationURL: authURL,

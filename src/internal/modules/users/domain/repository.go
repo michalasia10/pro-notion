@@ -10,6 +10,9 @@ type UserRepository interface {
 	// GetByID retrieves a user by ID
 	GetByID(ctx context.Context, id string) (User, error)
 
+	// GetByInternalID retrieves a user by internal UUID
+	GetByInternalID(ctx context.Context, id string) (User, error)
+
 	// GetByEmail retrieves a user by email
 	GetByEmail(ctx context.Context, email string) (User, error)
 

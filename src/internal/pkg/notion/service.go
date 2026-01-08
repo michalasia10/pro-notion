@@ -36,9 +36,19 @@ func (s *Service) GetAuthorizationURL(state string) string {
 	return s.OAuth.GetAuthorizationURL(state)
 }
 
+// GetAuthorizationURLWithRedirect is a convenience method for OAuth authorization URL generation with redirect override
+func (s *Service) GetAuthorizationURLWithRedirect(state, redirectURI string) string {
+	return s.OAuth.GetAuthorizationURLWithRedirect(state, redirectURI)
+}
+
 // ExchangeCodeForToken is a convenience method for OAuth token exchange
 func (s *Service) ExchangeCodeForToken(code string) (*OAuthTokenResponse, error) {
 	return s.OAuth.ExchangeCodeForToken(code)
+}
+
+// ExchangeCodeForTokenWithRedirect is a convenience method for OAuth token exchange with redirect override
+func (s *Service) ExchangeCodeForTokenWithRedirect(code, redirectURI string) (*OAuthTokenResponse, error) {
+	return s.OAuth.ExchangeCodeForTokenWithRedirect(code, redirectURI)
 }
 
 // GetCurrentUser is a convenience method for getting current user
