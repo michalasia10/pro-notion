@@ -87,9 +87,9 @@ GET  /api/v1/auth/notion/callback         - Handle OAuth callback
 
 ### 6. Notion Webhook & Event-Driven Flow ✅ COMPLETED
 - [x] Create `/api/v1/webhooks/notion` endpoint that validates and publishes a `NotionWebhookReceived` event to Watermill
-- [ ] Create a `WebhookTriage` Watermill subscriber to process raw events and publish specific domain events (e.g., `TaskPropertiesUpdated`)
+- [x] Create a `WebhookTriage` Watermill subscriber to process raw events and publish specific domain events (e.g., `TaskPropertiesUpdated`)
 - [ ] Create a `TaskSynchronizer` Watermill subscriber to update the local database based on domain events
-- [ ] Implement robust `X-Notion-Signature` validation for security
+- [x] Implement robust `X-Notion-Signature` validation for security
 
 ### 7. Core Feature Logic - Tasks & Background Jobs
 - [ ] Create `tasks` domain module with dependency and hierarchy support
@@ -102,7 +102,7 @@ GET  /api/v1/auth/notion/callback         - Handle OAuth callback
 ### 8. API Endpoints & Real-time Frontend Updates
 - [ ] **Handle Eventual Consistency in API/UI:** Define a clear contract for notifying the frontend about ongoing background processes (e.g., a "syncing" status in API responses or via SSE) so it can display appropriate indicators until a final confirmation event is received.
 - [ ] **Projects API**:
-    - [ ] `GET /api/v1/projects` - List user projects
+    - [x] `GET /api/v1/projects` - List user projects
     - [ ] `POST /api/v1/projects` - Create/sync project from Notion (triggers initial sync)
     - [ ] `POST /api/v1/projects/{id}/resync` - Manually trigger a full re-synchronization
     - [ ] `DELETE /api/v1/projects/{id}` - Delete a project

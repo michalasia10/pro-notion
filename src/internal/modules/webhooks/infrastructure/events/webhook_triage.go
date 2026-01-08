@@ -20,17 +20,71 @@ import (
 )
 
 var (
-	pageUpdatedEvent     = "page.updated"
-	pageCreatedEvent     = "page.created"
-	pageDeletedEvent     = "page.deleted"
-	databaseUpdatedEvent = "database.updated"
+	pageContentUpdatedEvent    = "page.content_updated"
+	pageCreatedEvent           = "page.created"
+	pageDeletedEvent           = "page.deleted"
+	pageLockedEvent            = "page.locked"
+	pageMovedEvent             = "page.moved"
+	pagePropertiesUpdatedEvent = "page.properties_updated"
+	pageUndeletedEvent         = "page.undeleted"
+	pageUnlockedEvent          = "page.unlocked"
+
+	databaseContentUpdatedEvent = "database.content_updated"
+	databaseCreatedEvent        = "database.created"
+	databaseDeletedEvent        = "database.deleted"
+	databaseMovedEvent          = "database.moved"
+	databaseSchemaUpdatedEvent  = "database.schema_updated"
+	databaseUndeletedEvent      = "database.undeleted"
+
+	dataSourceContentUpdatedEvent = "data_source.content_updated"
+	dataSourceCreatedEvent        = "data_source.created"
+	dataSourceDeletedEvent        = "data_source.deleted"
+	dataSourceMovedEvent          = "data_source.moved"
+	dataSourceSchemaUpdatedEvent  = "data_source.schema_updated"
+	dataSourceUndeletedEvent      = "data_source.undeleted"
+
+	commentCreatedEvent = "comment.created"
+	commentDeletedEvent = "comment.deleted"
+	commentUpdatedEvent = "comment.updated"
 )
 
 // NotionWebhookPayload represents the structure of a webhook payload from Notion
 type NotionWebhookPayload struct {
 	Type      string                 `json:"type"`
 	Data      map[string]interface{} `json:"data"`
-	Timestamp time.Time              `json:"timestamp"`
+	Timestamp string                 `json:"timestamp"`
+	Entity    NotionWebhookEntity    `json:"entity"`
+}
+
+type NotionWebhookEntity struct {
+	ID   string `json:"id"`
+	Type string `json:"type"`
+}
+
+var knownWebhookEventTypes = map[string]struct{}{
+	pageContentUpdatedEvent:    {},
+	pageCreatedEvent:           {},
+	pageDeletedEvent:           {},
+	pageLockedEvent:            {},
+	pageMovedEvent:             {},
+	pagePropertiesUpdatedEvent: {},
+	pageUndeletedEvent:         {},
+	pageUnlockedEvent:          {},
+	databaseContentUpdatedEvent: {},
+	databaseCreatedEvent:        {},
+	databaseDeletedEvent:        {},
+	databaseMovedEvent:          {},
+	databaseSchemaUpdatedEvent:  {},
+	databaseUndeletedEvent:      {},
+	dataSourceContentUpdatedEvent: {},
+	dataSourceCreatedEvent:        {},
+	dataSourceDeletedEvent:        {},
+	dataSourceMovedEvent:          {},
+	dataSourceSchemaUpdatedEvent:  {},
+	dataSourceUndeletedEvent:      {},
+	commentCreatedEvent: {},
+	commentDeletedEvent: {},
+	commentUpdatedEvent: {},
 }
 
 // WebhookTriage processes raw Notion webhook events and publishes specific domain events
@@ -91,15 +145,23 @@ func (wt *WebhookTriage) ProcessWebhook(msg *message.Message) error {
 	}
 
 	switch notionPayload.Type {
-	case pageUpdatedEvent:
+	case pageContentUpdatedEvent:
+		return wt.handlePageUpdated(ctx, notionPayload)
+	case pagePropertiesUpdatedEvent:
 		return wt.handlePageUpdated(ctx, notionPayload)
 	case pageCreatedEvent:
 		return wt.handlePageCreated(ctx, notionPayload)
 	case pageDeletedEvent:
 		return wt.handlePageDeleted(ctx, notionPayload)
-	case databaseUpdatedEvent:
+	case databaseSchemaUpdatedEvent:
+		return wt.handleDatabaseUpdated(notionPayload)
+	case dataSourceSchemaUpdatedEvent:
 		return wt.handleDatabaseUpdated(notionPayload)
 	default:
+		if _, ok := knownWebhookEventTypes[notionPayload.Type]; ok {
+			wt.logger.Printf("Ignoring webhook type: %s", notionPayload.Type)
+			return nil
+		}
 		wt.logger.Printf("Unknown webhook type: %s", notionPayload.Type)
 		return nil
 	}
@@ -110,26 +172,34 @@ func (wt *WebhookTriage) logEvent(eventType, message string) {
 }
 
 func (wt *WebhookTriage) handlePageUpdated(ctx context.Context, payload NotionWebhookPayload) error {
-	pageID, ok := payload.Data["id"].(string)
+	eventType := payload.Type
+	if eventType == "" {
+		eventType = pagePropertiesUpdatedEvent
+	}
+	pageID, ok := getPageID(payload)
 	if !ok {
-		wt.logEvent(pageUpdatedEvent, "Missing page ID")
+		wt.logEvent(eventType, "Missing page ID")
 		return nil
 	}
 
-	databaseID, ok := payload.Data["database_id"].(string)
+	databaseID, ok := getDatabaseID(payload)
 	if !ok {
-		wt.logEvent(pageUpdatedEvent, "Missing database ID")
+		if isNonDatabaseParent(payload) {
+			wt.logEvent(eventType, "Ignoring page event with non-database parent")
+			return nil
+		}
+		wt.logEvent(eventType, "Missing database ID")
 		return nil
 	}
 
 	taskID, created, err := wt.resolveTaskID(ctx, databaseID, pageID, true)
 	if err != nil {
-		wt.logEvent(pageUpdatedEvent, fmt.Sprintf("Failed to resolve task for (db=%s page=%s): %v", databaseID, pageID, err))
+		wt.logEvent(eventType, fmt.Sprintf("Failed to resolve task for (db=%s page=%s): %v", databaseID, pageID, err))
 		return err
 	}
 
 	if created {
-		wt.logEvent(pageUpdatedEvent, fmt.Sprintf("Created new task mapping db=%s page=%s task=%s", databaseID, pageID, taskID))
+		wt.logEvent(eventType, fmt.Sprintf("Created new task mapping db=%s page=%s task=%s", databaseID, pageID, taskID))
 	}
 
 	event := sharedEvents.NewTaskPropertiesUpdated(taskID, databaseID, pageID, payload.Data)
@@ -137,14 +207,18 @@ func (wt *WebhookTriage) handlePageUpdated(ctx context.Context, payload NotionWe
 }
 
 func (wt *WebhookTriage) handlePageCreated(ctx context.Context, payload NotionWebhookPayload) error {
-	pageID, ok := payload.Data["id"].(string)
+	pageID, ok := getPageID(payload)
 	if !ok {
 		wt.logEvent(pageCreatedEvent, "Missing page ID")
 		return nil
 	}
 
-	databaseID, ok := payload.Data["database_id"].(string)
+	databaseID, ok := getDatabaseID(payload)
 	if !ok {
+		if isNonDatabaseParent(payload) {
+			wt.logEvent(pageCreatedEvent, "Ignoring page event with non-database parent")
+			return nil
+		}
 		wt.logEvent(pageCreatedEvent, "Missing database ID")
 		return nil
 	}
@@ -164,14 +238,18 @@ func (wt *WebhookTriage) handlePageCreated(ctx context.Context, payload NotionWe
 }
 
 func (wt *WebhookTriage) handlePageDeleted(ctx context.Context, payload NotionWebhookPayload) error {
-	pageID, ok := payload.Data["id"].(string)
+	pageID, ok := getPageID(payload)
 	if !ok {
 		wt.logEvent(pageDeletedEvent, "Missing page ID")
 		return nil
 	}
 
-	databaseID, ok := payload.Data["database_id"].(string)
+	databaseID, ok := getDatabaseID(payload)
 	if !ok {
+		if isNonDatabaseParent(payload) {
+			wt.logEvent(pageDeletedEvent, "Ignoring page event with non-database parent")
+			return nil
+		}
 		wt.logEvent(pageDeletedEvent, "Missing database ID")
 		return nil
 	}
@@ -191,19 +269,81 @@ func (wt *WebhookTriage) handlePageDeleted(ctx context.Context, payload NotionWe
 }
 
 func (wt *WebhookTriage) handleDatabaseUpdated(payload NotionWebhookPayload) error {
-	databaseID, ok := payload.Data["id"].(string)
+	eventType := payload.Type
+	if eventType == "" {
+		eventType = databaseSchemaUpdatedEvent
+	}
+	databaseID, ok := getDatabaseID(payload)
 	if !ok {
-		wt.logEvent(databaseUpdatedEvent, "Missing database ID")
+		wt.logEvent(eventType, "Missing database ID")
 		return nil
 	}
 
-	pageID, ok := payload.Data["page_id"].(string)
-	if !ok {
-		pageID = ""
+	pageID := ""
+	if payload.Data != nil {
+		if id, ok := payload.Data["page_id"].(string); ok {
+			pageID = id
+		}
 	}
 
 	event := sharedEvents.NewDatabasePropertiesUpdated(databaseID, pageID, payload.Data)
 	return wt.publishDatabasePropertiesUpdated(event)
+}
+
+func getPageID(payload NotionWebhookPayload) (string, bool) {
+	if payload.Entity.Type == "page" && payload.Entity.ID != "" {
+		return payload.Entity.ID, true
+	}
+	if payload.Data == nil {
+		return "", false
+	}
+	if id, ok := payload.Data["page_id"].(string); ok && id != "" {
+		return id, true
+	}
+	if id, ok := payload.Data["id"].(string); ok && id != "" {
+		return id, true
+	}
+	return "", false
+}
+
+func getDatabaseID(payload NotionWebhookPayload) (string, bool) {
+	if (payload.Entity.Type == "database" || payload.Entity.Type == "data_source") && payload.Entity.ID != "" {
+		return payload.Entity.ID, true
+	}
+	if payload.Data == nil {
+		return "", false
+	}
+	parent, ok := payload.Data["parent"].(map[string]interface{})
+	if !ok {
+		return "", false
+	}
+	if parentType, ok := parent["type"].(string); ok && parentType == "database" {
+		if id, ok := parent["id"].(string); ok && id != "" {
+			return id, true
+		}
+	}
+	if id, ok := parent["database_id"].(string); ok && id != "" {
+		return id, true
+	}
+	return "", false
+}
+
+func isNonDatabaseParent(payload NotionWebhookPayload) bool {
+	if payload.Entity.Type != "page" {
+		return false
+	}
+	if payload.Data == nil {
+		return false
+	}
+	parent, ok := payload.Data["parent"].(map[string]interface{})
+	if !ok {
+		return false
+	}
+	parentType, ok := parent["type"].(string)
+	if !ok {
+		return false
+	}
+	return parentType != "database"
 }
 
 func (wt *WebhookTriage) resolveTaskID(ctx context.Context, databaseID, pageID string, createIfMissing bool) (uuid.UUID, bool, error) {

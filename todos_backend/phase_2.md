@@ -58,7 +58,7 @@
 
 ### Step 3: First End-to-End Flow (API & Webhook)
 *   **Goal:** Connect all components into a single, working, simplified flow.
-*   **Status:** 📝 To Do
+*   **Status:** 🟡 In progress
 
 | Task | Implementation Details | Status |
 | :--- | :--- | :--- |
