@@ -62,7 +62,7 @@ services:
       redis:
         condition: service_healthy
   psql_bp:
-    image: postgres:latest
+    image: postgres:17
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${BLUEPRINT_DB_DATABASE:-postgres}
@@ -96,4 +96,3 @@ volumes:
   redis_volume:
   go-build-cache:
   go-mod-cache:
-

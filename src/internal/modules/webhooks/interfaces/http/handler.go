@@ -49,6 +49,7 @@ func (h *WebhookHandler) HandleWebhook(w http.ResponseWriter, r *http.Request) {
 		Payload:        payload,
 		Signature:      signature,
 		RequestContext: r.Context(),
+		SignatureVerified: webhookInfra.IsSignatureVerified(r.Context()),
 	}
 
 	response, err := h.webhookService.ProcessWebhook(r.Context(), req)

@@ -3,8 +3,11 @@ package http
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"io"
+	"log"
 	"net/http"
+	"os"
 
 	"src/internal/config"
 	"src/internal/modules/webhooks/domain"
@@ -15,6 +18,7 @@ type contextKey string
 
 const (
 	webhookBodyKey contextKey = "webhook_body"
+	signatureVerifiedKey contextKey = "webhook_signature_verified"
 )
 
 // WebhookMiddleware validates webhook signature and stores raw body in context
@@ -49,14 +53,23 @@ func (m *WebhookMiddleware) Handler(next http.Handler) http.Handler {
 			return
 		}
 
+		if isVerificationRequest(body) {
+			ctx := context.WithValue(r.Context(), signatureVerifiedKey, true)
+			ctx = context.WithValue(ctx, webhookBodyKey, body)
+			next.ServeHTTP(w, r.WithContext(ctx))
+			return
+		}
+
 		// Create signature for validation
 		signature := domain.NewWebhookSignature(
 			r.Header.Get("X-Notion-Signature"),
 			cfg.Notion.WebhookSecret,
 		)
 
-		// Validate signature
 		if err := m.validator.ValidateSignature(signature, body); err != nil {
+			if os.Getenv("APP_ENV") == "local" {
+				log.Printf("webhook signature validation failed: header=%q error=%v", signature.HeaderValue, err)
+			}
 			statusCode := http.StatusUnauthorized
 			if err == domain.ErrInvalidPayload {
 				statusCode = http.StatusBadRequest
@@ -69,7 +82,8 @@ func (m *WebhookMiddleware) Handler(next http.Handler) http.Handler {
 		}
 
 		// Signature is valid, store raw body in context
-		ctx := context.WithValue(r.Context(), webhookBodyKey, body)
+		ctx := context.WithValue(r.Context(), signatureVerifiedKey, true)
+		ctx = context.WithValue(ctx, webhookBodyKey, body)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
@@ -97,4 +111,17 @@ func GetWebhookBody(ctx context.Context) (domain.WebhookPayload, error) {
 		}
 	}
 	return body, nil
+}
+
+func IsSignatureVerified(ctx context.Context) bool {
+	verified, ok := ctx.Value(signatureVerifiedKey).(bool)
+	return ok && verified
+}
+
+func isVerificationRequest(payload domain.WebhookPayload) bool {
+	var req domain.VerificationRequest
+	if err := json.Unmarshal(payload, &req); err != nil {
+		return false
+	}
+	return req.IsVerification()
 }

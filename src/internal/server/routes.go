@@ -6,12 +6,15 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 	"github.com/go-chi/render"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/hlog"
 
 	projectsHTTP "src/internal/modules/projects/interfaces/http"
 	usersHTTP "src/internal/modules/users/interfaces/http"
@@ -21,7 +24,31 @@ import (
 
 func (s *Server) RegisterRoutes() http.Handler {
 	r := chi.NewRouter()
-	r.Use(middleware.Logger)
+
+	isLocal := os.Getenv("APP_ENV") == "local"
+	logger := zerolog.New(os.Stdout).With().Timestamp().Logger()
+	if isLocal {
+		logger = logger.Output(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: time.RFC3339Nano}).Level(zerolog.DebugLevel)
+	} else {
+		logger = logger.Level(zerolog.InfoLevel)
+	}
+
+	r.Use(middleware.RequestID)
+	r.Use(hlog.NewHandler(logger))
+	r.Use(hlog.RequestIDHandler("request_id", "Request-ID"))
+	r.Use(hlog.RemoteAddrHandler("remote_ip"))
+	r.Use(hlog.UserAgentHandler("user_agent"))
+	r.Use(hlog.RefererHandler("referer"))
+	r.Use(bodyLogMiddleware(isLocal, 4096))
+	r.Use(hlog.AccessHandler(func(r *http.Request, status, size int, duration time.Duration) {
+		hlog.FromRequest(r).Info().
+			Str("method", r.Method).
+			Str("path", r.URL.Path).
+			Int("status", status).
+			Int("bytes", size).
+			Dur("duration", duration).
+			Msg("request")
+	}))
 	r.Use(render.SetContentType(render.ContentTypeJSON))
 
 	r.Use(cors.Handler(cors.Options{

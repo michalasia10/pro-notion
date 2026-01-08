@@ -13,6 +13,7 @@ type WebhookProcessingRequest struct {
 	Payload        domain.WebhookPayload
 	Signature      *domain.WebhookSignature
 	RequestContext context.Context
+	SignatureVerified bool
 }
 
 // WebhookProcessingResponse represents the response from webhook processing
@@ -48,8 +49,10 @@ func NewWebhookService(
 // ProcessWebhook processes a webhook request
 func (s *WebhookService) ProcessWebhook(ctx context.Context, req WebhookProcessingRequest) (WebhookProcessingResponse, error) {
 	// Validate signature
-	if err := s.validator.ValidateSignature(req.Signature, req.Payload); err != nil {
-		return WebhookProcessingResponse{Success: false}, err
+	if !req.SignatureVerified {
+		if err := s.validator.ValidateSignature(req.Signature, req.Payload); err != nil {
+			return WebhookProcessingResponse{Success: false}, err
+		}
 	}
 
 	// Classify the request
